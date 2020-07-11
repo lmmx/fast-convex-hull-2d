@@ -47,7 +47,40 @@ One fast algorithm for computing the convex hull in 2D is known as "Graham's sca
 
 - R. L. Graham (1972) [An Efficient Algorithm for Determining the Convex Hull of a Finite Planar Set](http://www.math.ucsd.edu/~ronspubs/72_10_convex_hull.pdf)
 
-...another algorithm was implemented by Graham's colleague, [Kenneth L. Clarkson](https://en.wikipedia.org/wiki/Kenneth_L._Clarkson),
+> Given a finite set S = {s₁, ..., sₙ} in the plane…
+>
+> Step 1: Find a point P in the plane which is in the interior of CH(S) [the convex hull of S]…
+>
+> Step 2: Express each sᵢ ∈ S in polar coordinates with origin P and 𝜃 = 0 in the direction of an
+> arbitrary fixed half-line L from P…
+>
+> Step 3: Order the elements 𝞀ₖ exp(i𝜃ₖ) of S in terms of increasing 𝜃ₖ…
+>
+> We now have S in the form S = {r₁exp(iφ₁), ..., rₙexp(iφₙ)} with 0 ≤ φ₁ ≤ ... ≤ φₙ < 2π and rᵢ ≥ 0…
+>
+> Step 4: If φᵢ = φᵢ₊₁ then we may delete the point with the smaller amplitude since it clearly
+> cannot be an extreme point of CH(S). Also any point with rᵢ = 0 can be deleted.
+>
+> ...By relabelling the remaining points, we can set Sʹ = {r₁exp(iφ₁), ..., rₙˊexp(iφₙˊ)} where nʹ ≤ n.
+>
+> Step 5: Start with three consecutive points in Sʹ... There are two possibilities:
+> (i) α+β ≥ π. Then we delete the point rₖ₊₁...
+> (ii) α+β ≤ π. Return to the beginning of Step 5 [replacing some points]...
+>
+> By noting that each application of step 5 _either_ reduces the number of possible points of CH(S)
+> by one _or_ increases the current total number of points of Sʹ considered by one, **an easy
+> induction argument shows that with less than 2nʹ iterations of step 5, we must be left with
+> exactly the subset of S of all extreme points of CH(S). This completes the algorithm.**
+>
+> The reader may find it instructive to consider a small example of ten points or so. Computer
+> implementation of this algorithm makes it quite feasible to consider examples with n = 50 000.
+
+Some examples of this exist on GitHub ([here](https://github.com/search?l=Python&q=graham%27s+scan&type=Repositories)), so one option
+could be to implement this as a fast 2D convex hull calculator.
+
+- e.g. [this one](https://github.com/ejydavis/pyGrahamScan/blob/master/grahamscan.py) is 60 lines.
+
+Another algorithm was implemented by Graham's colleague, [Kenneth L. Clarkson](https://en.wikipedia.org/wiki/Kenneth_L._Clarkson),
 available from his old Bell Labs website ([archived here](https://web.archive.org/web/19980715014112/http://cm.bell-labs.com/cm/cs/who/clarkson/2dch.c)),
 - (“known for his research in computational geometry… co-editor-in-chief of the _Journal of Computational Geometry_”).
 - The code was listed [on his profile](https://web.archive.org/web/20081024042432/http://cm.bell-labs.com/who/clarkson/)
@@ -71,9 +104,119 @@ Some books which cover this subject:
 
 ## Reviewing scikit-image PR
 
+### What was in the PR?
+
 - [#2928: "Faster convex_hull_image polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928)
 
 This thread begins with a proposal to change the convex hull calculation in scikit-image (henceforth "skimage").
+
+Before we look at why it wasn't accepted, first off let's note that the PR consists of
+[3 commits](https://github.com/scikit-image/scikit-image/pull/2928/commits), the first of which
+contains the actual code, the 2nd is purely formatting, and the 3rd is a branch merge ("cleanly"
+with no code modifications involved).
+
+- The first commit is ["Faster convex polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928/commits/d40f773f8f02bb2be766a46c8202cd200ca3c35f) (20th December 2017).
+- The commit message was:
+
+> Replaced `grid_points_in_poly` with calls to `skimage.draw.polygon_perimeter` and
+> `scipy.ndimage.morphology.binary_fill_holes` in convex polygon drawing step for a 2D image.
+>
+> For large 2D images (~10,000 x ~10,000 pixels), this substitution can result in a
+> function-call-to-return speedup of more than 5x (from 23.0 sec to 4.4 sec for a particular image
+> with about 150 convex hull edges) while producing a convex hull image that is nearly identical to
+> the image created by the current drawing routine.  In following comments, I will compare the two
+> results of these two routines.
+
+This tells us that it gave a speedup, but how? That's in the code comments itself: the line
+
+> \# If 2D, use fast Cython function to locate convex hull pixels
+
+was removed in favour of:
+
+> \# If 2D, locate hull perimeter pixels and use fast SciPy function to fill it in
+
+i.e. we're still using that fast Cython function (the aforementioned
+[`_convex_hull.pyx`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/_convex_hull.pyx) that came from
+CellProfiler and was incorporated into scikit-image), but furthermore we're using a fast SciPy
+function:
+
+```py
+from scipy.ndimage.morphology import binary_fill_holes
+```
+
+Whose docs are
+[here](https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.binary_fill_holes.html):
+
+> `scipy.ndimage.binary_fill_holes(input, structure=None, output=None, origin=0)`
+> 
+> Fill the holes in binary objects.
+
+A potentially useful parameter to note (that isn't used in the PR) is `output`:
+
+> `output` ndarray, optional
+>
+> Array of the same shape as input, into which the output is placed. By default, a new array is created.
+
+i.e. if we pass an `output` argument we can assign to that rather than creating a new array, and
+maybe make a more lightweight function (but that's for consideration once it works).
+
+The example in the docs is:
+
+```py
+>>> a
+array([[0, 0, 0, 0, 0],
+       [0, 1, 1, 1, 0],
+       [0, 1, 0, 1, 0],
+       [0, 1, 1, 1, 0],
+       [0, 0, 0, 0, 0]])
+>>> ndimage.binary_fill_holes(a).astype(int)
+array([[0, 0, 0, 0, 0],
+       [0, 1, 1, 1, 0],
+       [0, 1, 1, 1, 0],
+       [0, 1, 1, 1, 0],
+       [0, 0, 0, 0, 0]])
+```
+
+The docs note:
+
+> The algorithm used in this function consists in invading the complementary _[sic]_ of the shapes in input
+> from the outer boundary of the image, using binary dilations. Holes are not connected to the
+> boundary and are therefore not invaded. The result is the complementary subset of the invaded
+> region.
+
+'Complementary' should be 'complement', i.e. it inverts the binary image so 'holes' become
+positive and are not "connected to the boundary" (only positive pixels can be connected)
+so do not get "invaded" by the (presumably iterative)
+[binary dilation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.binary_dilation.html#scipy.ndimage.binary_dilation).
+
+The code change itself is just the introduction of 3 new lines.
+
+The assignment of `mask`:
+
+```py
+mask = grid_points_in_poly(image.shape, vertices)
+```
+
+is swapped out for:
+
+```py
+hull_perim_r, hull_perim_c = polygon_perimeter(vertices[:, 0], vertices[:, 1])
+mask = np.zeros(image.shape, dtype=np.bool)
+mask[hull_perim_r, hull_perim_c] = True
+mask = binary_fill_holes(mask)
+```
+
+- The first of those new lines sets 2 variables for the row and column of the CH perimeter,
+  [the docs](https://scikit-image.org/docs/stable/api/skimage.draw.html#skimage.draw.polygon_perimeter)
+  for which note "May be used to directly index into an array"
+
+- The mask is initialised as all `False`, with the same shape as the image whose CH is to be found
+
+- The mask is set to `True` (this is the aforementioned direct indexing)
+
+- The holes in the mask are filled with the SciPy function
+
+### What happened to the PR after submission?
 
 It isn't accepted as it introduces errors, which are caught by the Travis CI testing pipeline:
 
@@ -126,3 +269,17 @@ into 2 variables `hull_perim_r` and `hull_perim_c`
 >        [0, 0, 0, 1, 0, 0, 0, 1, 1, 0],
 >        [0, 0, 0, 0, 1, 1, 1, 0, 0, 0]], dtype=uint8)
 > ```
+
+So you pass in some polygon points and these are interpolated on a discrete grid whose
+dimensions match those of some `img` (an all-zero array) to give the binary
+image of the outline of a polygon when directly indexed into.
+
+The `shape` parameter is optional, and defaults to `None`.
+
+> If None, the full extents of the polygon is used. Must be at least length 2.
+
+We can see that in the code above, it's not provided so will be `None` and 
+
+...
+
+(TBC, work in progress, gone to bed!)
