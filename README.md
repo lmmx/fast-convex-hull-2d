@@ -5,6 +5,40 @@
 There was a pull request (PR) proposing a faster convex hull algorithm, but it gave some
 errors. This is discussed [below](#reviewing-scikit-image-pr), after a quick expository intro.
 
+## Intro: choosing what to "sprint" on
+
+Some 'requested features' are listed
+[here](https://github.com/scikit-image/scikit-image/wiki/Requested-features) (and anyone can
+[contribute](https://scikit-image.org/docs/stable/contribute.html), but this weekend July 11th-12th
+2020 it's SciPy 2020's [“sprints”](https://www.scipy2020.scipy.org/sprints)).
+
+One possible algorithm to implement listed was:
+
+> - Fast 2D convex hull (consider using CellProfiler version).
+>   - [Algorithm overview](https://web.archive.org/web/20100306010010/http://www.tcs.fudan.edu.cn/rudolf/Courses/Algorithms/Alg_cs_07w/Webprojects/Zhaobo_hull/index.html#section26).
+>   - [One free implementation](https://web.archive.org/web/19980715014112/http://cm.bell-labs.com/cm/cs/who/clarkson/2dch.c).
+>     - (Compare against current implementation.)
+
+This stood out to me as something worth improving as convex hulls are one of the basics of
+convex optimisation, and also I knew of the [_CellProfiler_]() project (belonging to Anne Carpenter
+at the Broad Institute).
+
+The "CellProfiler version" was a reference to
+https://github.com/CellProfiler/centrosome/blob/master/centrosome/_convex_hull.pyx
+
+In fact, this feature request had been in the Wiki since this page's creation
+[all the way back in 2012](https://github.com/scikit-image/scikit-image/wiki/Requested-features/7e47b11e3bdb5245b9c6676e776c6745fc265124)!
+
+- This initial version noted that there was ongoing work to ["merge code provided by CellProfiler
+  team"](https://github.com/scikit-image/scikit-image/wiki/Requested-features/7e47b11e3bdb5245b9c6676e776c6745fc265124#merge-code-provided-by-cellprofiler-team)
+- The code provided was 2 files of what is now a GitHub repo but was then a Broad Institute SVN trunk:
+  - [`cellprofiler/cpmath/cpmorphology.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/cpmorphology.py)
+    and [`cellprofiler/cpmath/filter.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/filter.py) which are still
+    in the repo today!
+
+Having chosen this, I did a little literature review (summarised in the next section) and then began
+to review the problems with the pull request (click [here](#reviewing-scikit-image-pr) to jump to that).
+
 ## Intro: choosing an algorithm/literature review
 
 One fast algorithm for computing the convex hull in 2D is known as "Graham's scan", published at Bell Labs
@@ -15,7 +49,9 @@ One fast algorithm for computing the convex hull in 2D is known as "Graham's sca
 available from his old Bell Labs website ([archived here](https://web.archive.org/web/19980715014112/http://cm.bell-labs.com/cm/cs/who/clarkson/2dch.c)),
 - (“known for his research in computational geometry… co-editor-in-chief of the _Journal of Computational Geometry_”).
 - The code was listed [on his profile](https://web.archive.org/web/20081024042432/http://cm.bell-labs.com/who/clarkson/)
-  as “a short, complete planar convex hull code”.
+  as “a short, complete planar convex hull code”, and he notes he is "particularly" interested in
+  "algorithms that have provable properties, but are relatively simple" (indeed he coauthored a
+  paper with Shor of [Shor's algorithm](https://en.wikipedia.org/wiki/Shor%27s_algorithm) fame)
 - It is included here (along with the license header) as [`2dch.c`](2dch.c)
 
 I'm not sure how to run this C code (`gcc` gives an error about integer arguments being of the wrong type), but it gives a general idea.
