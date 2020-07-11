@@ -3,7 +3,7 @@
 :running: SciPy 2020 sprint on scikit-image for a faster 2D convex hull algorithm :running:
 
 There was a pull request (PR) proposing a faster convex hull algorithm, but it gave some
-errors. This is discussed [below](#Reviewing_scikit-image_PR), after a quick expository intro.
+errors. This is discussed [below](#reviewing-scikit-image-pr), after a quick expository intro.
 
 ## Intro: choosing an algorithm/literature review
 
@@ -22,13 +22,13 @@ I'm not sure how to run this C code (`gcc` gives an error about integer argument
 
 Some books which cover this subject:
 
-- Bærentzen (2012) Guide to Computational Geometry Processing
+- :book: Bærentzen (2012) Guide to Computational Geometry Processing
   - Chapter 13: Convex Hulls; section 13.3: Convex Hull Algorithms in 2D
-- de Berg (2008) Computational Geometry: Algorithms and Applications
+- :book: de Berg (2008) Computational Geometry: Algorithms and Applications
   - Chapter 1, p.13
-- Devados (2011) Discrete and Computational Geometry
+- :book: Devados (2011) Discrete and Computational Geometry
   - Chapter 2: Convex Hulls
-- O'Rourke (1998) Computational Geometry in C
+- :book: O'Rourke (1998) Computational Geometry in C
   - Chapter 3: Convex Hulls in Two Dimensions
 
 ## Reviewing scikit-image PR
