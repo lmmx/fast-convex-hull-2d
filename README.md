@@ -23,18 +23,20 @@ This stood out to me as something worth improving as convex hulls are one of the
 convex optimisation, and also I knew of the [_CellProfiler_]() project (belonging to Anne Carpenter
 at the Broad Institute).
 
-The "CellProfiler version" was a reference to
-https://github.com/CellProfiler/centrosome/blob/master/centrosome/_convex_hull.pyx
+The "CellProfiler version" seemed to be a reference to the Cython file: [`_convex_hull.pyx`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/_convex_hull.pyx)...
 
-In fact, this feature request had been in the Wiki since this page's creation
+...In fact, this feature request had been in the Wiki since this page's creation
 [all the way back in 2012](https://github.com/scikit-image/scikit-image/wiki/Requested-features/7e47b11e3bdb5245b9c6676e776c6745fc265124)!
 
-- This initial version noted that there was ongoing work to ["merge code provided by CellProfiler
-  team"](https://github.com/scikit-image/scikit-image/wiki/Requested-features/7e47b11e3bdb5245b9c6676e776c6745fc265124#merge-code-provided-by-cellprofiler-team)
-- The code provided was 2 files of what is now a GitHub repo but was then a Broad Institute SVN trunk:
-  - [`cellprofiler/cpmath/cpmorphology.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/cpmorphology.py)
-    and [`cellprofiler/cpmath/filter.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/filter.py) which are still
-    in the repo today!
+This initial version noted that there was ongoing work to ["merge code provided by CellProfiler
+team"](https://github.com/scikit-image/scikit-image/wiki/Requested-features/7e47b11e3bdb5245b9c6676e776c6745fc265124#merge-code-provided-by-cellprofiler-team)
+
+The code provided to `scikit-image` under a BSD licence was 2 files of what is now a GitHub repo but was then a Broad Institute SVN trunk:
+
+- [`cellprofiler/cpmath/cpmorphology.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/cpmorphology.py)
+- [`cellprofiler/cpmath/filter.py`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/filter.py)
+
+...which are still in the repo to this day!
 
 Having chosen this, I did a little literature review (summarised in the next section) and then began
 to review the problems with the pull request (click [here](#reviewing-scikit-image-pr) to jump to that).
@@ -69,7 +71,7 @@ Some books which cover this subject:
 
 ## Reviewing scikit-image PR
 
-- [#2928: "Faster convex_hull_image polygon drawing for 2D images`"](https://github.com/scikit-image/scikit-image/pull/2928)
+- [#2928: "Faster convex_hull_image polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928)
 
 This thread begins with a proposal to change the convex hull calculation in scikit-image (henceforth "skimage").
 
