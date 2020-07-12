@@ -12,6 +12,8 @@ Some 'requested features' are listed
 [contribute](https://scikit-image.org/docs/stable/contribute.html), but this weekend July 11th-12th
 2020 it's SciPy 2020's [“sprints”](https://www.scipy2020.scipy.org/sprints)).
 
+- Some issues were also labelled '[sprint](https://github.com/scikit-image/scikit-image/issues?q=is%3Aissue+is%3Aopen+label%3Asprint)'
+
 One possible algorithm to implement listed was:
 
 > - Fast 2D convex hull (consider using CellProfiler version).
