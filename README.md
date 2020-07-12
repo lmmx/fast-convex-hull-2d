@@ -480,4 +480,61 @@ def convex_area(self):
 So at a guess, surely `sum` wouldn't be erroring, so it must be that when `self.convex_image` is
 accessed then this too is a property...
 
-(TBC, breaking for dinner)
+Indeed, accessing `rp.convex_image` throws the same error, so we can switch the function
+`bug_initial` which accesses `rp.convex_area` for another function `bug_initial_cause` which
+reproduces the same bug by instead accessing `rp.convex_image`.
+
+So what happens when the `convex_image` attribute is accessed? Presumably only a property which runs
+a function upon access would produce an error upon access.
+
+Of course, `convex_image` is the next defined (property-decorated) method, on line 299-303:
+
+```py
+@property
+@_cached
+def convex_image(self):
+    from ..morphology.convex_hull import convex_hull_image
+    return convex_hull_image(self.image)
+```
+
+So this is going 'up a level' from `skimage.measure` and into the `skimage.morphology` submodule,
+and then the
+[`convex_hull.py`](https://github.com/scikit-image/scikit-image/blob/master/skimage/morphology/convex_hull.py) submodule file,
+and specifically to [line 21](https://github.com/scikit-image/scikit-image/blob/master/skimage/morphology/convex_hull.py#L21) in that file,
+where the function `convex_hull_image` is defined:
+
+```py
+def convex_hull_image(image, offset_coordinates=True, tolerance=1e-10):
+    ...
+    return mask
+```
+
+So again, we can simplify the initial bug, and for the first time we can find something to access on
+the `rp` variable which doesn't raise an error: `rp.image` is the argument to `convex_hull_image`,
+a `np.ndarray` of `dtype('bool')`, i.e. it's a binary mask, and in fact it's just the boolean typed
+equivalent of the `SAMPLE` array (of integer dtype):
+
+```py
+>>> np.array_equal(SAMPLE, rp.image)
+True
+>>> rp.image.shape
+(10, 18)
+```
+
+It's a 10 row, 18 column array just like `SAMPLE`.
+
+So what part of `convex_hull_image` is mis-indexing our array?
+
+- Specifically, something is trying to access the 11th row of a 10 row array, leading to
+  this `IndexError: index 10 is out of bounds for axis 0 with size 10` message
+
+The good news is that we've managed to simplify the bug 4 times now, it can be stated as
+given in the function `bug_quaternary`:
+
+```py
+img = SAMPLE.astype(np.bool)
+conv_img = convex_hull_image(img)
+```
+
+which will throw the exact same `IndexError` as the initial 'draft'/appearance of the bug,
+as given in the function `bug_initial` (as `regionprops(SAMPLE)[0].convex_area`).
