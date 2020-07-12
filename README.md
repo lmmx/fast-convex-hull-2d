@@ -115,6 +115,18 @@ This file can be converted to HTML with:
 (echo "<html><body>"; pandoc 2928.md; echo "</html></body>") > 2928.html
 ```
 
+(I thought I could then `wget` all the links but seemingly not)
+
+Better yet we can download the page and all of its attachments with `wget`:
+
+```sh
+mkdir 2928_files
+cd 2928_files
+wget -nd -rk --include-directories="scikit-image/scikit-image/files/" -l 1 https://github.com/scikit-image/scikit-image/pull/2928
+rm robots.txt
+mv 2928 2928.html
+```
+
 ### What was in the PR?
 
 - [#2928: "Faster convex_hull_image polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928)

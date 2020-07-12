@@ -1,0 +1,138 @@
+convex_hull_image(image, offset_coordinates=True) [faster]:
+
+         908 function calls (907 primitive calls) in 4.576 seconds
+
+   Ordered by: standard name
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    4.576    4.576 <string>:1(<module>)
+        3    0.000    0.000    0.000    0.000 __init__.py:2000(_to_unmasked_float_array)
+        6    0.000    0.000    0.000    0.000 __init__.py:825(__getitem__)
+        1    0.000    0.000    0.000    0.000 _geometry.py:7(polygon_clip)
+        3    0.000    0.000    0.001    0.000 _methods.py:25(_amax)
+        3    0.000    0.000    0.002    0.001 _methods.py:28(_amin)
+        1    0.000    0.000    0.000    0.000 _methods.py:37(_any)
+        4    0.000    0.000    0.000    0.000 _methods.py:40(_all)
+        2    0.000    0.000    0.000    0.000 _ni_support.py:55(_normalize_sequence)
+        1    0.000    0.000    0.000    0.000 _ni_support.py:71(_get_output)
+        1    0.001    0.001    0.031    0.031 arraysetops.py:113(unique)
+        1    0.006    0.006    0.030    0.030 arraysetops.py:250(_unique1d)
+        1    0.000    0.000    0.000    0.000 convex_hull.py:14(_offsets_diamond)
+        1    0.068    0.068    4.576    4.576 convex_hull.py:21(convex_hull_image)
+        1    0.000    0.000    0.000    0.000 core.py:6192(isMaskedArray)
+        1    0.001    0.001    0.011    0.011 draw.py:186(polygon_perimeter)
+       65    0.000    0.000    0.001    0.000 draw.py:331(line)
+        1    0.000    0.000    0.000    0.000 fromnumeric.py:1837(product)
+        1    0.000    0.000    0.000    0.000 fromnumeric.py:1973(all)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2174(amax)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2275(amin)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2723(around)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:2792(round_)
+        2    0.000    0.000    0.000    0.000 fromnumeric.py:55(_wrapfunc)
+        1    0.000    0.000    0.000    0.000 morphology.py:123(generate_binary_structure)
+        1    0.000    0.000    4.117    4.117 morphology.py:214(_binary_erosion)
+        1    0.009    0.009    4.126    4.126 morphology.py:373(binary_dilation)
+        1    0.000    0.000    0.000    0.000 morphology.py:47(_center_is_true)
+        1    0.065    0.065    4.191    4.191 morphology.py:972(binary_fill_holes)
+        2    0.000    0.000    0.000    0.000 ntpath.py:415(normpath)
+        3    0.000    0.000    0.000    0.000 ntpath.py:43(normcase)
+        2    0.000    0.000    0.000    0.000 ntpath.py:483(abspath)
+        2    0.000    0.000    0.000    0.000 ntpath.py:63(join)
+        6    0.000    0.000    0.000    0.000 ntpath.py:96(splitdrive)
+        1    0.000    0.000    0.000    0.000 numeric.py:150(ones)
+        1    0.000    0.000    0.000    0.000 numeric.py:2008(indices)
+      143    0.000    0.000    0.130    0.001 numeric.py:463(asarray)
+        6    0.000    0.000    0.000    0.000 numeric.py:534(asanyarray)
+        3    0.000    0.000    0.000    0.000 numeric.py:586(ascontiguousarray)
+        3    0.000    0.000    0.000    0.000 os.py:446(get)
+        3    0.000    0.000    0.000    0.000 os.py:512(getenv)
+        3    0.000    0.000    0.000    0.000 path.py:105(__init__)
+        3    0.000    0.000    0.000    0.000 path.py:204(_update_values)
+        7    0.000    0.000    0.000    0.000 path.py:214(vertices)
+        4    0.000    0.000    0.000    0.000 path.py:228(codes)
+        2    0.000    0.000    0.000    0.000 path.py:247(simplify_threshold)
+        2    0.000    0.000    0.000    0.000 path.py:266(should_simplify)
+        1    0.000    0.000    0.000    0.000 path.py:338(make_compound_path)
+        1    0.000    0.000    0.000    0.000 path.py:366(__len__)
+        1    0.000    0.000    0.000    0.000 path.py:586(to_polygons)
+        1    0.000    0.000    0.000    0.000 path.py:967(clip_to_bbox)
+        2    0.000    0.000    0.001    0.001 random.py:100(seed)
+       12    0.000    0.000    0.000    0.000 random.py:275(choice)
+        2    0.000    0.000    0.001    0.001 random.py:91(__init__)
+        2    0.000    0.000    0.000    0.000 shape_base.py:182(vstack)
+        3    0.000    0.000    0.000    0.000 shape_base.py:63(atleast_2d)
+        2    0.000    0.000    0.000    0.000 tempfile.py:120(__init__)
+        2    0.000    0.000    0.001    0.001 tempfile.py:124(rng)
+        2    0.000    0.000    0.001    0.001 tempfile.py:135(next)
+        1    0.000    0.000    0.000    0.000 tempfile.py:148(_candidate_tempdir_list)
+        1    0.000    0.000    0.003    0.003 tempfile.py:176(_get_default_tempdir)
+        1    0.000    0.000    0.000    0.000 tempfile.py:221(_get_candidate_names)
+        1    0.000    0.000    0.002    0.002 tempfile.py:235(_mkstemp_inner)
+        1    0.000    0.000    0.003    0.003 tempfile.py:268(gettempdir)
+        1    0.000    0.000    0.004    0.004 tempfile.py:280(mkstemp)
+        1    0.000    0.000    0.000    0.000 tempfile.py:45(_set_cloexec)
+        1    0.000    0.000    0.000    0.000 transforms.py:279(__array__)
+        1    0.000    0.000    0.000    0.000 transforms.py:749(__init__)
+        1    0.000    0.000    0.000    0.000 transforms.py:83(__init__)
+        1    0.000    0.000    0.000    0.000 transforms.py:986(get_points)
+        1    0.000    0.000    0.000    0.000 type_check.py:251(iscomplexobj)
+        1    0.004    0.004    0.035    0.035 unique.py:4(unique_rows)
+        1    0.000    0.000    0.000    0.000 {_io.open}
+        2    0.000    0.000    0.000    0.000 {binascii.hexlify}
+        2    0.001    0.001    0.001    0.001 {function seed at 0x0000000009A65898}
+        4    0.000    0.000    0.000    0.000 {getattr}
+        5    0.000    0.000    0.000    0.000 {hasattr}
+        7    0.000    0.000    0.000    0.000 {isinstance}
+        1    0.000    0.000    0.000    0.000 {issubclass}
+    51/50    0.000    0.000    0.000    0.000 {len}
+        1    0.000    0.000    0.000    0.000 {matplotlib._path.clip_path_to_rect}
+        1    0.000    0.000    0.000    0.000 {matplotlib._path.convert_path_to_polygons}
+        4    0.000    0.000    0.000    0.000 {method 'acquire' of 'thread.lock' objects}
+        4    0.000    0.000    0.000    0.000 {method 'all' of 'numpy.ndarray' objects}
+        6    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        1    0.024    0.024    0.024    0.024 {method 'argsort' of 'numpy.ndarray' objects}
+        3    0.125    0.042    0.125    0.042 {method 'astype' of 'numpy.ndarray' objects}
+        3    0.000    0.000    0.000    0.000 {method 'copy' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+      131    0.004    0.000    0.004    0.000 {method 'extend' of 'list' objects}
+        1    0.001    0.001    0.001    0.001 {method 'flatten' of 'numpy.ndarray' objects}
+        3    0.000    0.000    0.000    0.000 {method 'get' of 'dict' objects}
+        4    0.000    0.000    0.000    0.000 {method 'join' of 'str' objects}
+        3    0.000    0.000    0.000    0.000 {method 'lower' of 'str' objects}
+        2    0.000    0.000    0.000    0.000 {method 'lstrip' of 'str' objects}
+       12    0.000    0.000    0.000    0.000 {method 'random' of '_random.Random' objects}
+       13    0.003    0.000    0.003    0.000 {method 'reduce' of 'numpy.ufunc' objects}
+        4    0.000    0.000    0.000    0.000 {method 'release' of 'thread.lock' objects}
+       11    0.000    0.000    0.000    0.000 {method 'replace' of 'str' objects}
+        4    0.000    0.000    0.000    0.000 {method 'reshape' of 'numpy.ndarray' objects}
+        2    0.000    0.000    0.000    0.000 {method 'round' of 'numpy.ndarray' objects}
+        2    0.000    0.000    0.000    0.000 {method 'split' of 'str' objects}
+        4    0.000    0.000    0.000    0.000 {method 'startswith' of 'str' objects}
+        3    0.000    0.000    0.000    0.000 {method 'upper' of 'str' objects}
+        1    0.000    0.000    0.000    0.000 {method 'view' of 'numpy.ndarray' objects}
+        1    0.000    0.000    0.000    0.000 {method 'write' of '_io.BufferedWriter' objects}
+        2    0.000    0.000    0.000    0.000 {nt._getfullpathname}
+        1    0.000    0.000    0.000    0.000 {nt.close}
+        1    0.000    0.000    0.000    0.000 {nt.getcwd}
+        2    0.000    0.000    0.000    0.000 {nt.getpid}
+        2    0.002    0.001    0.002    0.001 {nt.open}
+        1    0.001    0.001    0.001    0.001 {nt.unlink}
+        2    0.000    0.000    0.000    0.000 {nt.urandom}
+        2    0.000    0.000    0.000    0.000 {numpy.core.multiarray.arange}
+      155    0.130    0.001    0.130    0.001 {numpy.core.multiarray.array}
+        3    0.000    0.000    0.000    0.000 {numpy.core.multiarray.concatenate}
+        1    0.000    0.000    0.000    0.000 {numpy.core.multiarray.copyto}
+        4    0.000    0.000    0.000    0.000 {numpy.core.multiarray.empty}
+        5    0.001    0.000    0.001    0.000 {numpy.core.multiarray.zeros}
+        4    0.000    0.000    0.000    0.000 {range}
+        1    1.770    1.770    1.770    1.770 {scipy.ndimage._nd_image.binary_erosion2}
+        1    2.222    2.222    2.222    2.222 {scipy.ndimage._nd_image.binary_erosion}
+       65    0.001    0.000    0.001    0.000 {skimage.draw._draw._line}
+        1    0.137    0.137    0.138    0.138 {skimage.morphology._convex_hull.possible_hull}
+        1    0.000    0.000    0.000    0.000 {sum}
+        2    0.000    0.000    0.000    0.000 {thread.allocate_lock}
+        1    0.000    0.000    0.000    0.000 {zip}
+
+
+'C:/Users/husby036/Documents/Cprojects/test_s2s/testFiles/chull_faster.tif' saved
+'C:/Users/husby036/Documents/Cprojects/test_s2s/testFiles/chull_faster_inspection.tif' saved
