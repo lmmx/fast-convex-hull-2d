@@ -142,11 +142,8 @@ and changed its hardcoded `test_dir` to one on my machine (`~/dev/convhull2d/cpr
 the code to use f-strings and `pathlib.Path`.
 
 It turns out this can't be run, as the input `tif` file being used in testing wasn't provided as a
-file attachment (`image.tif`).
+file attachment (`image.tif`). Let's press on anyway.
 
-```
-FileNotFoundError: [Errno 2] No such file or directory: '/home/louis/dev/convhull2d/cprof/image.tif'
-```
 
 ### What was in the PR?
 
@@ -322,8 +319,90 @@ The `shape` parameter is optional, and defaults to `None`.
 
 > If None, the full extents of the polygon is used. Must be at least length 2.
 
-We can see that in the code above, it's not provided so will be `None` and 
+We can see that in the code above, it's not provided so will be `None`.
 
-...
+The error is thrown from the 0'th axis, i.e. the row, i.e. `hull_perim_r`,
+and furthermore the context shows that it does so in
+[`test_regionprops.py`](https://github.com/scikit-image/scikit-image/blob/master/skimage/measure/tests/test_regionprops.py),
+the test for [`skimage.measure.regionprops`](https://scikit-image.org/docs/dev/api/skimage.measure.html#skimage.measure.regionprops)
 
-(TBC, work in progress, gone to bed!)
+```sh
+find ./ -iname test_regionprops.py 2> /dev/null
+```
+⇣
+```STDOUT
+./skimage/measure/tests/test_regionprops.py
+```
+
+This function `regionprops` computes 2 things reliant on 2D convex hull
+
+> **convex_area** : int
+>
+> Number of pixels of convex hull image, which is the smallest convex polygon that encloses the
+> region.
+> 
+> **convex_image(H, J)** : ndarray
+>
+> Binary convex hull image which has the same size as bounding box.
+
+Specifically, it errors at "line 121" (currently actually [line
+152](https://github.com/scikit-image/scikit-image/blob/master/skimage/measure/tests/test_regionprops.py#L152)),
+
+```py
+def test_convex_area():
+    area = regionprops(SAMPLE)[0].convex_area
+```
+
+...where `SAMPLE` is a hardcoded array (line
+[16](https://github.com/scikit-image/scikit-image/blob/master/skimage/measure/tests/test_regionprops.py#L16-L27) of the same file)
+
+```py
+SAMPLE = np.array(
+    [[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+     [0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]]
+)
+```
+
+This is good then, we can immediately make a script [`test_convex_area.py`](test_convex_area.py) to reproduce the error.
+
+I couldn't see this but maintainers can provide the command to run to get up to date with a given
+PR, which in this case was:
+
+```sh
+git checkout -b ehusby-patch-1 master
+git pull https://github.com/ehusby/scikit-image.git patch-1
+```
+
+```sh
+python test_convex_area.py
+```
+⇣
+```STDOUT
+Traceback (most recent call last):
+  File "test_convex_area.py", line 22, in <module>
+    test_convex_area()
+  File "test_convex_area.py", line 18, in test_convex_area
+    area = regionprops(SAMPLE)[0].convex_area
+  File "/home/louis/dev/skimage-patch/skimage/measure/_regionprops.py", line 190, in wrapper
+    cache[prop] = f(obj)
+  File "/home/louis/dev/skimage-patch/skimage/measure/_regionprops.py", line 297, in convex_area
+    return np.sum(self.convex_image)
+  File "/home/louis/dev/skimage-patch/skimage/measure/_regionprops.py", line 190, in wrapper
+    cache[prop] = f(obj)
+  File "/home/louis/dev/skimage-patch/skimage/measure/_regionprops.py", line 303, in convex_image
+    return convex_hull_image(self.image)
+  File "/home/louis/dev/skimage-patch/skimage/morphology/convex_hull.py", line 90, in
+convex_hull_image
+    mask[hull_perim_r, hull_perim_c] = True
+IndexError: index 10 is out of bounds for axis 0 with size 10
+```
+
+:tada:
