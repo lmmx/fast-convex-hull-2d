@@ -371,6 +371,11 @@ SAMPLE = np.array(
 )
 ```
 
+- This can be visualised as an image with matplotlib `pyplot.imshow`, which shows it's generally
+  kind of like an equilateral triangle with a concave base, like the Star Trek logo
+- Also note that there are no empty rows or columns at the edges of this array (so the convex hull
+  will be an array of the same size)
+
 This is good then, we can immediately make a script [`test_convex_area.py`](test_convex_area.py) to reproduce the error.
 
 I couldn't see this but maintainers can provide the command to run to get up to date with a given
@@ -538,3 +543,250 @@ conv_img = convex_hull_image(img)
 
 which will throw the exact same `IndexError` as the initial 'draft'/appearance of the bug,
 as given in the function `bug_initial` (as `regionprops(SAMPLE)[0].convex_area`).
+
+The error arises at line 90 in the patch (i.e. the merged development version on my machine), and
+[line 86 in ehusby's `patch-1` branch](https://github.com/ehusby/scikit-image/blob/patch-1/skimage/morphology/convex_hull.py#L86)
+(which is what Travis CI runs its tests on therefore the line number it reports).
+
+- ehusby's fork is now "2537 commits behind scikit-image:master" at the time of writing, hence the
+  difference in line numbering.
+- From now on I will list line numbers as "current patch (ehusby's patch)"
+  - e.g. in this case, the error arises at line 90 (line 86).
+  - I can only give a URL link to ehusby's patch (GitHub won't display a new patch as far as I know)
+  - If I don't give a line number in brackets then I didn't bother looking it up, and if I write
+    "(=)" then the line numbers match.
+
+So anyway, what is at line 90 (line 86) that causes this error?
+
+```py
+mask[hull_perim_r, hull_perim_c] = True
+```
+
+There are 3 variables involved, and the first 2 are where the error arises (the row number
+`hull_perim_r` is apparently `10`, and this is the 11th [0-based] index into an array of 10 rows,
+hence the `IndexError`.
+
+We've been over this before, when we looked at the changes introduced.
+
+The very first line of these changes was
+
+```py
+hull_perim_r, hull_perim_c = polygon_perimeter(vertices[:, 0], vertices[:, 1])
+```
+
+and the function generating these variables was `polygon_perimeter` using `vertices`,
+so we need to look at what `vertices` are (as `polygon_perimeter` is "just" a function, and so we
+need to get to `vertices` from our `img` which is just a bool-type `SAMPLE`.
+
+How do we get the `vertices`? Well it turns out it's 2 lines, lines 80-81 of my patched repo,
+and it relates to the `ConvexHull` class:
+
+```py
+hull = ConvexHull(coords)
+vertices = hull.points[hull.vertices]
+```
+
+This should correspond to the "equilateral triangle with a concave base"-like image we expected
+earlier (I said it looked a bit like the Star Trek logo). Importantly, there were no empty rows
+or columns around the perimeter, so the convex hull will be the same size as the input array
+(i.e. it won't be cropped during this process).
+
+The `ConvexHull` class came from `scipy.spatial`, imported at line 4 (=).
+
+This time, `ConvexHull` is not visibly defined as a string literal in `scipy.spatial.__init__`,
+but can be found at line 2267 of `qhull.pyx`, which is imported into `scipy.spatial.__init__` on
+line 98:
+
+```py
+from .qhull import *
+```
+
+and then exported into the `__all__` variable on line 104 (via the `dir()` namespace):
+
+```py
+__all__ = [s for s in dir() if not s.startswith("_")]
+```
+
+The `.qhull` wildcard import refers to `qhull.pyx` (but not `qhull.pxd`, I think, these are
+"definition files", the `.pyx` are "implementation files" - see [Cython ⠶ Language
+basics](https://cython.readthedocs.io/en/latest/src/userguide/language_basics.html#cython-file-types)),
+in which there is an `__all__` defined as a list literal containing a string literal
+`'ConvexHull'`, hence it will be exported through the wildcard import into `scipy.spatial`.
+
+The class itself is defined in `qhull.pyx` at line 2267, and here's where things start to look...
+tricky.
+
+The class definition of `ConvexHull` takes as constructor base class a class called `_QhullUser`.
+The `__init__` method of the `ConvexHull` class has the method `def` line:
+
+```py
+def __init__(self, points, incremental=False, qhull_options=None)
+```
+
+So forgetting about everything else for a moment, how is this class constructor called?
+
+It was called as `hull = ConvexHull(coords)` on line 80 of `skimage/morphology/convex_hull.py`,
+the first of 2 lines which gave us the `vertices` which then fed into `polygon_perimeter` to produce
+the `hull_perim_r` that caused the `IndexError`.
+
+So according to the `__init__` method `def` line of `scipy.spatial.ConvexHull`, we should expect
+this variable `coords` to be an instance of the class `_QhullUser`.
+
+How is `coords` made? The `coords` variable gets assigned at multiple times (it seems to be the
+iterative process you'd expect in an algorithm something like Graham's scan we encountered earlier).
+
+Let's look for the first assignment: this is on line 60 (again, in `skimage/morphology/convex_hull.py`),
+and it follows a check for `if ndim == 2` (indeed we are looking at the 2D/planar CH algorithm):
+
+```py
+coords = possible_hull(np.ascontiguousarray(image, dtype=np.uint8))
+```
+
+Here `coords` is assigned as the return value of the function `possible_hull`, and what I'd guess is
+our trusty `img` variable (which is just a bool-typed `SAMPLE`).
+
+This time, `possible_hull` didn't come from `scipy.spatial`, it was imported at line 7 of
+`skimage/morphology/convex_hull.py`:
+
+```py
+from ._convex_hull import possible_hull
+```
+
+Again, this was a Cython implementation file, `_convex_hull.pyx`, and the function in question
+(`possible_hull`) was defined on line 11, the `def` line of which is:
+
+```py
+def possible_hull(cnp.uint8_t[:, ::1] img):
+```
+
+...in which `cnp` comes from the import on line 7
+
+```py
+cimport numpy as cnp
+```
+
+In other words, `cnp` is Cython numpy.
+
+The docstring for `possible_hull` adds that the input parameter `img` should be an "ndarray of
+bool". [This](https://stackoverflow.com/a/46416257/2668831) StackOverflow answer gives some more
+info:
+
+> #### cnp.int_t
+>
+> It's the type-identifier version for `np.int_`. That means you can't use it as dtype argument. But you
+> can use it as type for `cdef` declarations:
+>
+> ```
+> cimport numpy as cnp
+> import numpy as np
+> 
+> cdef cnp.int_t[:] arr = np.array([1,2,3], dtype=np.int_)
+>      |---TYPE---|                         |---DTYPE---|
+> ```
+>
+> This example (hopefully) shows that the type-identifier with the trailing `_t` actually represents
+> the type of an array using the dtype without the trailing `t`. You can't interchange them in Cython
+> code!
+>
+> ...
+>
+> ```
+> NumPy dtype          Numpy Cython type         C Cython type identifier
+> 
+> np.bool_             None                      None
+> np.int_              cnp.int_t                 long
+> ```
+>
+> Actually there are Cython types for `np.bool_`: `cnp.npy_bool` and `bint` but both they can't be used
+> for NumPy arrays currently. For scalars `cnp.npy_bool` will just be an unsigned integer while `bint`
+> will be a boolean. Not sure what's going on there...
+
+This is what we have here: our `img` (the bool-dtype version of the `SAMPLE` numpy array) is
+represented by Cython `int_t` type, and additionally it's unsigned and 8 bit (hence `uint8_t`).
+
+This then is the Cython data type being consumed to produce the variable `coords`, which I'll show
+again:
+
+```py
+coords = possible_hull(np.ascontiguousarray(image, dtype=np.uint8))
+```
+
+As we can see, the `np.uint8` type will become `cnp.uint8_t` without anything further being done.
+Neat!
+
+The numpy function
+[`ascontiguousarray`](https://numpy.org/doc/stable/reference/generated/numpy.ascontiguousarray.html)
+seems to serve a special purpose for Cython-interacting numpy code:
+
+> Return a contiguous array (ndim >= 1) in memory (C order).
+
+In the example, it shows that apparently there is a 'flag' on an array called `"C_CONTIGUOUS"` which
+will be reliably `True` for arrays created through `ascontiguousarray`, i.e. that's how you check
+this property of being "a contiguous array in memory (C order)".
+
+Interestingly, if we check `SAMPLE.flags["C_CONTIGUOUS"]` it returns `True`, so perhaps it's more of
+a just-in-case type of function, for certain edge cases...
+
+Interesting, but what is the outcome of all of this? What is `image` in the assignment to `coords`
+for a start?
+
+We met this earlier as the `def` line of `convex_hull_image`, at line 22 of
+`skimage/morphology/convex_hull.py`, where it was being called on `self.image` to return the value
+for the property `convex_image` in the first and second versions of the bug, but directly in `bug_secondary`:
+
+```py
+def convex_image(self):
+    from ..morphology.convex_hull import convex_hull_image
+    return convex_hull_image(self.image)
+```
+
+I.e. `self.image` is what we earlier defined into `bug_tertiary` as `img = rp.image`.
+
+So we can now replace the assignment of `coords` with `rp.image` where `rp = regionprops(SAMPLE)[0]`,
+or better yet, we can simplify this as we found in `bug_quaternary` that we could replace the entire
+call to `regionprops` by just setting the `img` to `SAMPLE.astype(np.bool)`.
+
+So in that case, we can rewrite the assignment of `coords` as:
+
+```py
+img = SAMPLE.astype(bool)
+coords = possible_hull(np.ascontiguousarray(img, dtype=np.uint8))
+```
+
+and we can get the function `possible_hull` from `skimage/morphology/_convex_hull.py` like so:
+
+```py
+from skimage.morphology import _convex_hull
+possible_hull = _convex_hull.possible_hull
+```
+
+(There's probably a better way to do that, but anyway...)
+
+...and voila, it runs, we get `coords.shape` of `(53, 2)`
+
+```py
+>>> " ~ ".join([",".join(map(repr, c.tolist())) for c in coords])
+'0,9 ~ 1,8 ~ 2,8 ~ 3,8 ~ 4,6 ~ 5,6 ~ 6,6 ~ 7,0 ~ 8,1 ~ 9,1 ~ 7,0 ~ 8,1 ~ 7,2 ~ 8,3 ~ 8,4 ~ 7,5 ~ 4,6
+~ 4,7 ~ 1,8 ~ 0,9 ~ 1,10 ~ 0,11 ~ 0,12 ~ 5,13 ~ 5,14 ~ 5,15 ~ 5,16 ~ 8,17 ~ 0,12 ~ 1,11 ~ 2,10 ~
+3,10 ~ 4,11 ~ 5,16 ~ 6,16 ~ 7,16 ~ 8,17 ~ 9,17 ~ 9,1 ~ 9,2 ~ 9,5 ~ 9,6 ~ 9,7 ~ 7,8 ~ 8,9 ~ 8,10 ~
+6,11 ~ 7,12 ~ 7,13 ~ 8,14 ~ 8,15 ~ 9,16 ~ 9,17'
+```
+
+One thing to note about these coords is their range:
+
+```py
+>>> coords.ptp(axis=0)
+array([ 9, 17])
+```
+
+i.e.
+
+```py
+>>> coords.min(axis=0).tolist(), coords.max(axis=0).tolist()
+([0, 0], [9, 17])
+```
+
+Notice that the maximum row coordinate is 9, so we should never raise that `IndexError` that occurs
+from accessing the nonexistent 10th row, so something must go wrong precisely after this assignment...
+
+
