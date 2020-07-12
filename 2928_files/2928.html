@@ -1,0 +1,138 @@
+<html><body>
+<h2 id="description">Description</h2>
+<p>Replaced <code>grid_points_in_poly</code> with calls to <code>skimage.draw.polygon_perimeter</code> and <code>scipy.ndimage.morphology.binary_fill_holes</code> in convex polygon drawing step for a 2D image. For large 2D images (~10,000 x ~10,000 pixels), this substitution can result in a function-call-to-return speedup of more than 5x (from 23.2 sec to 4.6 sec for the tested image that has about 150 convex hull edges) while producing a convex hull image that is nearly identical to the image created by the current drawing routine. What follows is a comparison of the <code>cProfile</code> results and convex hull images created by the two routines. ## Testing script</p>
+<p>To test the differences between the two drawing routines, I ran the following script to do a cProfile on the <code>skimage.morphology.convex_hull_image</code> function with and without changes to the &quot;convex_hull.py&quot; file in my <code>skimage</code> package library. Results using the function in its current state (without my changes) are referred to as the <code>latest</code> method, while results using the function in its faster state (with my changes) are referred to as the <code>faster</code> method. Additionally, I tested both the <code>offset_coordinates=True</code> and <code>offset_coordinates=False</code> options to <code>convex_hull_image</code>.</p>
+<pre><code>import cProfile
+import numpy as np
+import tifffile
+from PIL.Image import frombytes
+
+from skimage.morphology import convex_hull_image
+
+
+test_dir = &#39;C:/Users/husby036/Documents/Cprojects/test_s2s/testFiles/&#39;
+
+
+def saveImage(array, path):
+    if array.dtype == np.bool:
+        img = frombytes(mode=&#39;1&#39;, size=array.shape[::-1], data=np.packbits(array, axis=1))
+        img.save(path)
+    else:
+        tifffile.imsave(path, array)
+    print &quot;&#39;{}&#39; saved&quot;.format(path)
+
+
+function = &#39;convex_hull_image(image, offset_coordinates=True)&#39;
+
+chull_type = &#39;latest&#39;
+
+image = tifffile.imread(test_dir+&#39;image.tif&#39;)
+print(&quot;{} [{}]:\n&quot;.format(function, chull_type))
+cProfile.run(&#39;image_chull = {}&#39;.format(function))
+saveImage(image_chull, test_dir+&#39;chull_{}.tif&#39;.format(chull_type))
+
+debug_mask = np.zeros(image.shape, dtype=np.int8)
+debug_mask[image_chull] = 1
+debug_mask[image] += 2
+saveImage(debug_mask, test_dir+&#39;chull_{}_inspection.tif&#39;.format(chull_type))</code></pre>
+<p>For my primary test case, I chose the following 10341 x 11441 px source image:</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34267556-eccc7dd4-e642-11e7-91f4-4c395b00053a.png" alt="image_large" />
+<p class="caption">image_large</p>
+</div>
+<p>In this figure, yellow pixels are one/True/data pixels while purple pixels are zero/False/nodata pixels. ## offset_coordinates=True ### cProfile results</p>
+<p><code>latest</code>: <a href="https://github.com/scikit-image/scikit-image/files/1577130/offset_latest_cprof.txt">offset_latest_cprof.txt</a></p>
+<blockquote>
+<p>201 function calls in 23.216 seconds</p>
+</blockquote>
+<p><code>faster</code>: <a href="https://github.com/scikit-image/scikit-image/files/1577132/offset_faster_cprof.txt">offset_faster_cprof.txt</a></p>
+<blockquote>
+<p>908 function calls (907 primitive calls) in 4.576 seconds</p>
+</blockquote>
+<p>We see a speedup of about 5x for this large input array. ### Result image comparison</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34230840-2f6b9278-e59f-11e7-85c3-c1ed1851de00.png" alt="offset_diff" />
+<p class="caption">offset_diff</p>
+</div>
+<p><em>Histograms show counts of pixel values with the pixel value corresponding to each histogram bar taken to be the x-axis value at the left end of the bar.</em></p>
+<p>In the upper set of images, yellow pixels (value=1) are part of the convex hull while purple pixels (value=0) are not. The lower left image titled &quot;Difference&quot; is an image obtained by subtracting the upper left image from the upper right image (<code>faster</code> minus <code>latest</code>). Therefore, yellow pixels (value=1) are hull pixels in <code>faster</code> but not hull pixels in <code>latest</code>, and vice-versa for purple pixels (value=-1). The lower right image titled &quot;Boolean Difference&quot; is to help spot where differences in the images are located; yellow pixels (value=1) are where differences occur.</p>
+<p>The &quot;Difference&quot; figure zoomed to red box:</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34240704-cbee77f6-e5d5-11e7-833d-350c3d27fbcf.png" alt="offset_diff_zoom" />
+<p class="caption">offset_diff_zoom</p>
+</div>
+<p>In the &quot;Difference&quot; figure, yellow and purple rectangles show one-pixel differences in the border width of the drawn hull. For the <code>offset_coordinates=True</code> option, we assume <code>latest</code> is most correct and want to minimize the total number of blue pixels. The total number of blue pixels is is approximately 10, which is good. Since there are approximately 10,000 yellow pixels in the &quot;Difference&quot; figure, we see that <code>faster</code> almost always draws a thicker polygon border than <code>latest</code>.</p>
+<p>For closer inspection of the drawing routines in relation to the source image, the following &quot;_inspection&quot; images were created as shown in the last lines of the above testing script. In &quot;*_inspection&quot; images, yellow pixels (value=3) are pixels that are both one/True/data in the source image and are part of the drawn convex hull, light blue pixels (value=1) are pixels that are zero/False/nodata in the source image and are part of the drawn convex hull, purple pixels (value=0) are neither of these things, and <strong>green pixels (value=2) are errors -- pixels that are one/True/data in the source image but <em>are not</em> part of the drawn convex hull</strong>.</p>
+<p><img src="https://user-images.githubusercontent.com/20846681/34231871-59ef4a4a-e5a3-11e7-9a8a-1b0812fa2e9f.png" alt="offset_latest_inspect" /> <img src="https://user-images.githubusercontent.com/20846681/34232393-b9265754-e5a5-11e7-807e-ed3cb41fb1ff.png" alt="offset_faster_inspect" /></p>
+<p>Both <code>latest</code> and <code>faster</code> inspection images zoomed to the red box (only shown in the former):</p>
+<p><img src="https://user-images.githubusercontent.com/20846681/34232410-c9f4d3a8-e5a5-11e7-8117-9a2af9cb582d.png" alt="offset_latest_inspect_zoom" /> <img src="https://user-images.githubusercontent.com/20846681/34232413-cc9fa948-e5a5-11e7-81d1-31867f3dcefa.png" alt="offset_faster_inspect_zoom" /></p>
+<p>We see that neither drawing routine (<em>for <code>offset_coordinates=True</code></em>, but not so much for the opposite option, as seen later) has any green error pixels, which is good. We also see that, in general, <code>faster</code> is a bit more loose on drawing the convex hull border than <code>latest</code>, accounting for the significant number of pixels that are hull pixels in <code>faster</code> but not hull pixels in <code>latest</code>, as seen earlier. ## offset_coordinates=False ### cProfile results</p>
+<p><code>latest</code>: <a href="https://github.com/scikit-image/scikit-image/files/1577288/nooffset_latest_cprof.txt">nooffset_latest_cprof.txt</a></p>
+<blockquote>
+<p>197 function calls in 22.974 seconds</p>
+</blockquote>
+<p><code>faster</code>: <a href="https://github.com/scikit-image/scikit-image/files/1577294/nooffset_faster_cprof.txt">nooffset_faster_cprof.txt</a></p>
+<blockquote>
+<p>896 function calls (895 primitive calls) in 4.403 seconds</p>
+</blockquote>
+<h3 id="result-image-comparison">Result image comparison</h3>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34232693-1d62ebe6-e5a7-11e7-8ac6-44b3b15f1b69.png" alt="nooffset_diff" />
+<p class="caption">nooffset_diff</p>
+</div>
+<p>The &quot;Difference&quot; figure zoomed to red box:</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34240716-dfcc2818-e5d5-11e7-84c8-3b40877e9377.png" alt="nooffset_diff_zoom" />
+<p class="caption">nooffset_diff_zoom</p>
+</div>
+<p><img src="https://user-images.githubusercontent.com/20846681/34232708-2ad40634-e5a7-11e7-8df2-bbfe30e9c26c.png" alt="nooffset_latest_inspect" /> <img src="https://user-images.githubusercontent.com/20846681/34233060-da77612a-e5a8-11e7-847f-43b6ee7541e2.png" alt="nooffset_faster_inspect" /></p>
+<p>Both <code>latest</code> and <code>faster</code> inspection images zoomed to the red box (only shown in the former):</p>
+<p><img src="https://user-images.githubusercontent.com/20846681/34233067-df97ebf2-e5a8-11e7-9416-80f53a58870f.png" alt="nooffset_latest_inspect_zoom" /> <img src="https://user-images.githubusercontent.com/20846681/34233070-e1380550-e5a8-11e7-89e4-8fddc8eaaed1.png" alt="nooffset_faster_inspect_zoom" /></p>
+<p>For <code>offset_coordinates=False</code>, we see that <code>latest</code> has a small but significant number of &quot;green error pixels&quot; (as mentioned above). While it's not obvious to me why exactly <code>faster</code> does not have any green error pixels, this is not unexpected as the method has been shown to draw a looser convex hull border than <code>latest</code>, allowing it to retain all edge one/True/data pixels in the source image as part of the convex hull. ## Update with smaller secondary test image</p>
+<p>In response to <span class="citation">@soupault</span>'s comment, I've done what I should've done at first and compared the two drawing routines on a small image that's also <a href="https://blogs.mathworks.com/steve/2011/10/04/binary-image-convex-hull-algorithm-notes/">a test case referenced in the documentation for <code>scipy.morphology.convex_hull_image</code></a>.</p>
+<p>Here's the source image:</p>
+<p><img src="https://user-images.githubusercontent.com/20846681/34268235-97e40564-e645-11e7-8f19-676fcbc46583.png" alt="triangle_image" /> ## offset_coordinates=True ### cProfile results</p>
+<p><code>latest</code>: <a href="https://github.com/scikit-image/scikit-image/files/1580211/tri_offset_latest_cprof.txt">tri_offset_latest_cprof.txt</a></p>
+<blockquote>
+<p>201 function calls in 0.007 seconds</p>
+</blockquote>
+<p><code>faster</code>: <a href="https://github.com/scikit-image/scikit-image/files/1580213/tri_offset_faster_cprof.txt">tri_offset_faster_cprof.txt</a></p>
+<blockquote>
+<p>428 function calls (427 primitive calls) in 0.008 seconds</p>
+</blockquote>
+<p>We see that for a small input array (for which there tend to be less convex hull edges), there is little difference in drawing time. ### Result image comparison</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34269627-bc703934-e64a-11e7-872e-fef86a1db0fd.png" alt="tri_offset_diff" />
+<p class="caption">tri_offset_diff</p>
+</div>
+<p>This test case makes clear that the main difference in the result images is that <code>faster</code> (for which <code>skimage.draw.polygon_perimeter</code> is responsible) draws a thicker border of the convex hull than <code>latest</code> (for which <code>grid_points_in_poly</code> is responsible). ## offset_coordinates=False ### cProfile results</p>
+<p><code>latest</code>: <a href="https://github.com/scikit-image/scikit-image/files/1580207/tri_nooffset_latest_cprof.txt">tri_nooffset_latest_cprof.txt</a></p>
+<blockquote>
+<p>197 function calls in 0.006 seconds</p>
+</blockquote>
+<p><code>faster</code>: <a href="https://github.com/scikit-image/scikit-image/files/1580209/tri_nooffset_faster_cprof.txt">tri_nooffset_faster_cprof.txt</a></p>
+<blockquote>
+<p>408 function calls (407 primitive calls) in 0.007 seconds</p>
+</blockquote>
+<h3 id="result-image-comparison-1">Result image comparison</h3>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34269638-cb4a91b6-e64a-11e7-8821-f393fb67432b.png" alt="tri_nooffset_diff" />
+<p class="caption">tri_nooffset_diff</p>
+</div>
+<p>I was actually only planning on running the <code>offset_coordinates=True</code> option for this small image test case, but I had a hunch that I would see something interesting if I tried <code>offset_coordinates=False</code> as well! With this option, we see that <code>faster</code> gets the correct result! What logically followed was to do a comparison of (<code>latest</code>, <code>offset_coordinates=True</code>) with (<code>faster</code>, <code>offset_coordinates=False</code>) for the large primary test image:</p>
+<div class="figure">
+<img src="https://user-images.githubusercontent.com/20846681/34269906-cb668b72-e64b-11e7-8733-04f76f329c73.png" alt="mix_diff" />
+<p class="caption">mix_diff</p>
+</div>
+<p><em>Only 27 pixels across the two images differ!</em> ## Conclusion</p>
+<p>With these new results, the fact that the (<code>faster</code>, <code>offset_coordinates=False</code>) combination has been shown to have no &quot;green error pixels&quot; for both image size extremes, and that this combination creates the correct convex hull image for the small image test case, I see a great benefit of integrating the drawing routine from <code>faster</code> into <code>convex_hull_image</code> without the need for offsetting coordinates in 2D. ## Checklist</p>
+<pre><code>* [ ]  Consider making the faster drawing routine an optional argument to `convex_hull_image`.</code></pre>
+<h2 id="for-reviewers">For reviewers</h2>
+<pre><code>* [ ]  Check that the PR title is short, concise, and will make sense 1 year
+  later.
+
+* [ ]  Check that new functions are imported in corresponding `__init__.py`.
+
+* [ ]  Check that new features, API changes, and deprecations are mentioned in
+  `doc/release/release_dev.rst`.</code></pre>
+</html></body>

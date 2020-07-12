@@ -104,6 +104,17 @@ Some books which cover this subject:
 
 ## Reviewing scikit-image PR
 
+To review the PR including its file attachments (which are not version controlled!) on GitHub, I
+clicked 'quote reply' and the little `⋯` icon in the top-right of the PR description, then copied
+the text into [`2928.md`](2928.md) and trimmed off the prefixing `> ` (the quote block) to get the
+original description as a local markdown file.
+
+This file can be converted to HTML with:
+
+```sh
+(echo "<html><body>"; pandoc 2928.md; echo "</html></body>") > 2928.html
+```
+
 ### What was in the PR?
 
 - [#2928: "Faster convex_hull_image polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928)
