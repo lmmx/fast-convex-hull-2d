@@ -789,4 +789,91 @@ i.e.
 Notice that the maximum row coordinate is 9, so we should never raise that `IndexError` that occurs
 from accessing the nonexistent 10th row, so something must go wrong precisely after this assignment...
 
+The next step was
 
+```py
+hull = ConvexHull(coords)
+vertices = hull.points[hull.vertices]
+```
+
+where `ConvexHull` is a class from `scipy.spatial`. So far so good, we now have another array, `vertices`:
+
+```py
+array([[ 0., 12.],
+       [ 0.,  9.],
+       [ 7.,  0.],
+       [ 9.,  1.],
+       [ 9., 17.],
+       [ 8., 17.],
+       [ 5., 16.]])
+```
+
+It's changed to `float64` dtype, but there's still the same range:
+
+```py
+>>> vertices.ptp(axis=0)
+array([ 9., 17.])
+```
+
+i.e.
+
+```
+>>> vertices.min(axis=0).tolist(), vertices.max(axis=0).tolist()
+([0.0, 0.0], [9.0, 17.0])
+```
+
+So something must go wrong precisely after this...
+
+The next step was
+
+```py
+hull_perim_r, hull_perim_c = polygon_perimeter(vertices[:, 0], vertices[:, 1])
+```
+
+where `polygon_perimeter` was a function from `skimage.draw.polygon_perimeter`
+which was the first in the chain of replacements for `grid_points_in_poly`
+
+Thankfully I already found the [docs for this function earlier]:
+
+> - The first of those new lines sets 2 variables for the row and column of the CH perimeter,
+>   [the docs](https://scikit-image.org/docs/stable/api/skimage.draw.html#skimage.draw.polygon_perimeter)
+>   for which note "May be used to directly index into an array"
+
+So based on the previous variables `coords` and `vertices`, I'd expect these to be in the range
+`[0, 0]` and `[9, 17]`, and based on the docs I'm expecting the returned variables to go back to
+integer dtypes when `hull_perim_r` and `hull_perim_c` are assigned.
+
+```py
+>>> hull_perim_r
+array([0, 0, 0, 0, 0, 1, 2, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 9, 9, 9, 9,
+       9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 8, 7, 6, 5, 5, 4, 3, 2,
+       1, 0])
+```
+
+So far so good - the maximum here is 9 again.
+
+```
+>>> hull_perim_c
+array([12, 11, 10,  9,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0,  0,  1,  1,
+        1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17,
+       17, 17, 17, 17, 16, 16, 16, 15, 14, 14, 13, 12])
+```
+
+...and again, the maximum here is 17.
+
+We're now just 2 lines away from the source of the `IndexError`...
+
+```py
+mask = np.zeros(image.shape, dtype=np.bool)
+mask[hull_perim_r, hull_perim_c] = True
+```
+
+In the first of these lines, `image` should again be replaced by `img` in our testing code
+as it refers to the bool-type `SAMPLE` image. The mask actually gets calculated fine, no
+`IndexError`:
+
+![](mask_convex_hull.png)
+
+...so suddenly I can't reproduce the bug...
+
+:thinking: :bug: :thinking: :bug: :thinking: :bug: :thinking:
