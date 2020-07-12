@@ -129,6 +129,25 @@ rm robots.txt
 mv 2928 2928.html
 ```
 
+The files with names ending in `_cprof.txt` are results from [cProfile](https://docs.python.org/3.8/library/profile.html),
+
+> [`cProfile`](https://docs.python.org/3.8/library/profile.html#module-cProfile) and [`profile`](https://docs.python.org/3.8/library/profile.html#module-profile) provide _deterministic profiling_ of Python programs. A _profile_ is a set of
+> statistics that describes how often and for how long various parts of the program executed. These
+> statistics can be formatted into reports via the
+> [`pstats`](https://docs.python.org/3.8/library/profile.html#module-pstats) module.
+
+I manually excised the script used to generate these from the backtick block in `2928.md` into
+[`2928_files/pr_cprofiler.py`](2928_files/pr_cprofiler.py) (which uses `cProfile`),
+and changed its hardcoded `test_dir` to one on my machine (`~/dev/convhull2d/cprof/`) and rewrote
+the code to use f-strings and `pathlib.Path`.
+
+It turns out this can't be run, as the input `tif` file being used in testing wasn't provided as a
+file attachment (`image.tif`).
+
+```
+FileNotFoundError: [Errno 2] No such file or directory: '/home/louis/dev/convhull2d/cprof/image.tif'
+```
+
 ### What was in the PR?
 
 - [#2928: "Faster convex_hull_image polygon drawing for 2D images"](https://github.com/scikit-image/scikit-image/pull/2928)
