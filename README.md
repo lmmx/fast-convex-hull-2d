@@ -405,4 +405,79 @@ convex_hull_image
 IndexError: index 10 is out of bounds for axis 0 with size 10
 ```
 
-:tada:
+:tada: The error is now minimally reproducible! We can take a look at the source code for
+`regionprops` to understand what `regionprops(SAMPLE)[0].convex_area` is doing
+
+The basic route to obtaining the function `regionprops` goes:
+
+- `from skimage.measure import regionprops` takes the name `regionprops` from the namespace of
+  the `skimage.measure` submodule which exports an `__all__` variable in its `__init__.py` file
+  with "regionprops" (line 19)
+  - The `__init__` file is able to export this name in an `__all__` variable because on line 5
+    it imported it `from ._regionprops` (i.e. the internal file `skimage.measure._regionprops`)
+- The file `_regionprops.py` also declares an `__all__` variable, meaning it limits what it exports
+  to the namespace, on line 17 (in which again `'regionprops'` is declared as a string in a list.
+  This time it is not exporting something imported, but rather a funcdef defined on line 806 which
+  returns `regions`, a "list of `RegionProperties`" each of which "describes one labelled region"
+  (i.e. when we access `regionprops(SAMPLE)[0]` we access the first `RegionProperties` object in
+  the singleton list).
+
+So in other words, if we first assign:
+
+```py
+rp = regionprops(SAMPLE)[0]
+```
+
+then `rp` is a `RegionProperties` object... but what is a `RegionProperties` object?
+
+Well it's created on line 1084, as
+
+```py
+props = RegionProperties(sl, label, label_image, intensity_image,
+                         cache, extra_properties=extra_properties)
+```
+
+and the class constructor being called there is not imported, but was defined on line 207
+
+```py
+class RegionProperties:
+    def __init__(self, slice, label, label_image, intensity_image,
+                 cache_active, *, extra_properties=None):
+        ...
+```
+
+The `def` line for the funcdef `regionprops` (line 806) is:
+
+```py
+def regionprops(label_image, intensity_image=None, cache=True,
+                coordinates=None, *, extra_properties=None)
+```
+
+So since we call `regionprops` with only one argument (`SAMPLE`), this becomes the argument
+`label_image` which is passed to `RegionProperties` as the `slice` argument, then the rest of the parameters
+of the `regionprops` funcdef take their default arguments:
+
+- `intensity_image=None` --> passed directly to the class constructor `RegionProperties`
+- `cache=True`
+- `coordinates=None`
+- `extra_properties=None` --> passed directly to the class constructor `RegionProperties`
+
+In other words the thing to pay attention to is the 3rd argument [ignoring `self`] of the
+`RegionProperties` constructor, `label_image`, which we are setting as our array `SAMPLE`.
+
+...and now finally we get to the root of the attribute: like the class name suggests, the
+attributes defined on `RegionProperties` are actually properties (i.e. their method definitions
+carry the `@property` decorator (from the `functools` library), and `convex_area` is the one
+on lines 294-297:
+
+```py
+@property
+@_cached
+def convex_area(self):
+   return np.sum(self.convex_image)
+```
+
+So at a guess, surely `sum` wouldn't be erroring, so it must be that when `self.convex_image` is
+accessed then this too is a property...
+
+(TBC, breaking for dinner)
