@@ -22,7 +22,8 @@ One possible algorithm to implement listed was:
 >     - (Compare against current implementation.)
 
 This stood out to me as something worth improving as convex hulls are one of the basics of
-convex optimisation, and also I knew of the [_CellProfiler_]() project (belonging to Anne Carpenter
+convex optimisation, and also I knew of the
+[_CellProfiler_](https://en.wikipedia.org/wiki/CellProfiler) project (belonging to Anne Carpenter
 at the Broad Institute).
 
 The "CellProfiler version" seemed to be a reference to the Cython file: [`_convex_hull.pyx`](https://github.com/CellProfiler/centrosome/blob/master/centrosome/_convex_hull.pyx)...
@@ -99,6 +100,8 @@ Some books which cover this subject:
   - Chapter 13: Convex Hulls; section 13.3: Convex Hull Algorithms in 2D
 - :book: de Berg (2008) Computational Geometry: Algorithms and Applications
   - Chapter 1, p.13
+- :book: Klette & Rosenfeld (2004) [_Digital Geometry: Geometric Methods for Digital Picture Analysis_](https://books.google.co.uk/books?id=4_iEl6cquGYC&pg=PA432&lpg=PA432#v=onepage&q&f=false)
+  - Chapter 13: Hulls and diagrams, especially 13.1.2 Convex hull computation in the 2D grid
 - :book: Devados (2011) Discrete and Computational Geometry
   - Chapter 2: Convex Hulls
 - :book: O'Rourke (1998) Computational Geometry in C
@@ -877,3 +880,237 @@ as it refers to the bool-type `SAMPLE` image. The mask actually gets calculated 
 ...so suddenly I can't reproduce the bug...
 
 :thinking: :bug: :thinking: :bug: :thinking: :bug: :thinking:
+
+I wrote some simple functions in `test_convex_area.py` that can be run to show this odd behaviour:
+
+```sh
+python -i test_convex_area.py
+```
+
+⇣
+
+```STDOUT
+bug_initial raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_secondary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_tertiary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_quaternary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_5ary raised no error.
+```
+
+Adding in loops repeating it many times, and only testing `bug_5ary`, there's still no error
+found (i.e. it's not the case that the bug is only happening some small percentage of the time)...
+
+---
+
+The sprint is almost over, and the result was surprisingly inconclusive (but that's better than getting
+stuck I suppose). I learnt a lot about Cython, which I'd never seen before this weekend :—)
+
+But it's not over yet and looking again at the results, I probably missed something... Let's look
+more closely.
+
+---
+
+The first thing I notice I missed was `offset_coordinates`: notice that it's `True` by default
+
+```py
+def convex_hull_image(image, offset_coordinates=True, tolerance=1e-10):
+    ...
+    return mask
+```
+
+and because of this we execute an `if` block on line 71:
+
+```py
+# Add a vertex for the middle of each pixel edge
+if offset_coordinates:
+    offsets = _offsets_diamond(image.ndim)
+    coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, ndim)
+
+# repeated coordinates can *sometimes* cause problems in
+# scipy.spatial.ConvexHull, so we remove them.
+coords = unique_rows(coords)
+```
+
+This was supposed to happen before assigning `hull = ConvexHull(coords)`, oops...
+
+But actually, now we have a working test case and we can see at what point these intermediate steps
+break the masking step. I just jumped to the end too soon.
+
+The first step to include is to assign `offsets` and then edit `coords` using this.
+
+The function `_offsets_diamond` is defined on lines 15-19 of `skimage/morphology/convex_hull.py`
+
+So since there's no bug without that step, and there is a bug with this step, then this is surely
+where the bug will be hiding.
+
+...and running this:
+
+```py
+>>> (coords[:, np.newaxis, :] + offsets).reshape(-1, ndim)
+```
+
+We get quite a long array which I'll only show the first few lines of:
+
+```py
+array([[-0.5,  9. ],
+       [ 0.5,  9. ],
+       [ 0. ,  8.5],
+       [ 0. ,  9.5],
+       [ 0.5,  8. ],
+       ...
+       [ 7. ,  0.5],
+       [ 7.5,  1. ],
+       [ 8.5,  1. ],
+       [ 8. ,  0.5],
+       [ 8. ,  1.5],
+       [ 8.5,  1. ],
+       [ 9.5,  1. ],
+       ...
+```
+
+and there's the source of the bug: the maximum value in the first column here (which becomes
+`hull_perim_r`, the row index) has been incremented from 9 to 9.5 on the last line I showed here,
+and it's this that must be getting rounded to 10 when the array is subsequently coerced back to
+integer from float (as they were in the `vertices` array).
+
+From what I've seen earlier, I'd guess that perhaps this `_offsets_diamond` function that's
+introducing the bug is perhaps doing something like the 'binary dilation' step (the mathematical
+morphology) when it increments by this half-integer offset followed by rounding, but that's just a
+guess.
+
+To guess at a solution, I'd suggest clipping the effect of this incrementation based on the maximum
+and minimum of the array (but I'd want to make sure this makes sense once I understand the purpose
+of the `_offset_diamond` function).
+
+Once again there are two ways of showing this range:
+
+```py
+>>> (coords[:, np.newaxis, :] + offsets).reshape(-1, ndim).ptp(axis=0)
+array([10., 18.])
+```
+
+or
+
+```py
+>>> (coords[:, np.newaxis, :] + offsets).reshape(-1, ndim).min(axis=0)
+array([-0.5, -0.5])
+
+>>> (coords[:, np.newaxis, :] + offsets).reshape(-1, ndim).max(axis=0)
+array([ 9.5, 17.5])
+```
+
+So putting these 2 lines (and no further code) into a bug reproduction function,
+`bug_5ary` (and renaming the old one that didn't error `nobug_5ary`), and running the test
+over them all now we get:
+
+```sh
+python -i test_convex_area.py
+```
+⇣
+```STDOUT
+bug_initial raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_secondary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_tertiary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+bug_quaternary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+nobug_5ary raised no error.
+bug_5ary raised the IndexError index 10 is out of bounds for axis 0 with size 10
+>>>
+```
+
+...and thanks to setting a parameter `rets` which will cause the function to return early and
+to populate the namespace with the values it created which would cause the error, dropping into this
+program interactively will give you the variables to inspect.
+
+- e.g. You can `print(coords.max(axis=0).tolist())` and get `[9.5, 17.5]`
+
+I'll also included a copy of the `_offsets_diamond` function here just for reference:
+(which appeared on lines 15-19 of `convex_hull.py`)
+
+```py
+def _offsets_diamond(ndim):
+    offsets = np.zeros((2 * ndim, ndim))
+    for vertex, (axis, offset) in enumerate(product(range(ndim), (-0.5, 0.5))):
+        offsets[vertex, axis] = offset
+    return offsets
+```
+
+### Anything else worth fixing while we're at it
+
+Not to be pedantic, but I also don't see any particular reason why the two lines here use
+firstly `image.ndim` and then `ndim` (but it's not that important).
+
+### Reviewing the newly discovered source of the bug
+
+So what is this function doing, `_offsets_diamond`? The comment says:
+
+> "Add a vertex for the middle of each pixel edge"
+
+`TODO`: figure out how this relates to the algorithm logic, using the book references above
+
+### Recap of how to reproduce this result
+
+First set up your conda environment and clone the `skimage` dev repo as outlined [here]()
+
+For me that meant
+
+- As a first time contributor, forking the project and cloning and adding an upstream repo as
+  outlined [here](https://scikit-image.org/docs/stable/contribute.html#development-process)
+- following the [conda instructions](https://scikit-image.org/docs/stable/contribute.html#conda))
+  so that I could `conda activate` a virtual environment dedicated to scikit-image dev
+  - Additionally, I got one error, which escalated to one failed test after running
+
+```sh
+conda install pytest-httpserver
+```
+
+(If using conda you should run this in addition to the other instructions if you get an error which
+mentions `pytest-localserver`)
+
+- Fun fact, the `pip` installation takes a long time for this package because of the work it's doing
+  "Cythonizing and compiling the C code" (according to Emmanuelle) !
+
+Then to get the branch you need to checkout and pull, but first you might want to `cp -r` the entire
+cloned repo directory on your local machine you just got, so that you have both an up to date but unpatched
+copy of the repo as well as the one you're about to apply the patch to (this will modify the files
+in the directory, so if you don't copy you will no longer have a copy up to date with the
+scikit-image dev repo):
+
+- Note that the patch the following `git pull` will download is "2537 commits behind
+  scikit-image:master"! Ok that's enough warning :—P
+
+```sh
+git checkout -b ehusby-patch-1 master
+git pull https://github.com/ehusby/scikit-image.git patch-1
+```
+
+Then copy the script `test_convex_area.py` from this repo into the top-level of that (`scikit-image`) repo,
+(or modify it to run from somewhere else if you prefer), and you should be able to run it to reproduce the
+results I report above.
+
+### Suggesting what to do next
+
+To review the pull request which began this whole adventure through skimage,
+Erik Husby (ehusby) writes in issue 2928:
+
+> “My hunch is that the current `offset_coordinates` keyword argument is causing most (if not all) of
+> the index-out-of-bound errors, given that the `skimage.draw.polygon_perimeter` method in `faster`
+> that replaces the polygon-drawing functionality of `grid_points_in_poly` in `latest` essentially
+> produces the desired coordinate offset in 2D. Giving `offset_coordinates=True` to `faster`
+> essentially dilates the resulting convex polygon from what is desired, which will surely cause the
+> array bounds error if the polygon is to share an edge with the border of the image”
+
+So Erik vaguely saw the source (I couldn’t really understand it before I looked at the source, it
+was a bit overwhelming), note that when he refers to “faster” he’s referring to the branch `patch-1`
+which his PR would create.
+
+...My question then is should we discard the invalid dilation, or does it sometimes have meaning?
+E.g. would you ever call convex hull on some sub-portion of an image, in which case would it make
+sense to say that the ‘trimmed dilation’ caused by the `_offset_diamond` function should be applied
+to the edges of the larger image the sub image is a part of?
+
+My guess (as far as I can tell) is that no, you only call convex hull on an image, so it doesn’t
+make sense to have ‘residual’ border incrementation to ‘add on’ to any parent image.
+
+...but for now it's the end of the sprint and time for me to go to bed :—)
+
+(Will figure out the next steps and arrange a response to the PR shortly)
