@@ -260,8 +260,6 @@ plt.show()
 I should ensure min and max are for the extremal pixels of the border of `img`,
 not the border of the hull coords (I think?)
 
-![](edge_omit_success_animation.gif)
-
 Actually, I needed to use `functools.reduce` to apply `np.logical_and` over the 4 edge bool masks,
 i.e. to take the logical union of the `not_edge` mask to indicate where was not any type of edge,
 and then use that to filter the `pre_coords` i.e. to take a subset of the `coords` to add the offset
@@ -271,6 +269,9 @@ to.
   are shown as white (whereas in actual RGB value, the outside was being shown as black). This just helps
   to display the actual modification here so it's clear that the edges are being omitted, and you
   can visually ignore both the regions of 0 and 255.
+- I also decremented the `xlim` and `ylim` arguments to `plt.axes` by `-0.5` to show entire pixels
+
+![](edge_omit_success_animation.gif)
 
 ## Applying the offset to the subset of coords and merging with the non-offset coords
 
