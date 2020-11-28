@@ -7,7 +7,7 @@ errors. This is discussed [in the sprint notes](sprint_notes.md), which includes
 intro with some literature references.
 
 - **Update:** after taking a break and revisiting this with fresh eyes, I'm now taking notes on
-  the best solution [in the 'post-spring notes'](post_sprint_notes.md)!
+  the best solution [in the 'post-sprint notes'](post_sprint_notes.md)!
 
 Now that the source of the bug was discovered during the sprint, the task is now to
 fix it.
