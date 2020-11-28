@@ -250,15 +250,32 @@ plt.show()
 ```
 
 - (Actually, there was a small extra step to avoid duplicate frames, see
-  [anim_simple_coord_offset.py](anim_simple_coord_offset.py)) for the full script used to make
+  [anim_simple_coord_offset_draft.py](anim_simple_coord_offset_draft.py)) for the full script used to make
   the animation below:
 
 ![](edge_omit_fail_animation.gif)
 
 ...which shows that it's modifying all the wrong nodes!
 
-TODO: ensure min and max are for the extremal pixels of the border of `img`,
-not the border of the hull coords!
+I should ensure min and max are for the extremal pixels of the border of `img`,
+not the border of the hull coords (I think?)
+
+![](edge_omit_success_animation.gif)
+
+Actually, I needed to use `functools.reduce` to apply `np.logical_and` over the 4 edge bool masks,
+i.e. to take the logical union of the `not_edge` mask to indicate where was not any type of edge,
+and then use that to filter the `pre_coords` i.e. to take a subset of the `coords` to add the offset
+to.
+
+- The `cmap` colour scheme here is `twilight` which has white ends: so both the background and the inside
+  are shown as white (whereas in actual RGB value, the outside was being shown as black). This just helps
+  to display the actual modification here so it's clear that the edges are being omitted, and you
+  can visually ignore both the regions of 0 and 255.
+
+## Applying the offset to the subset of coords and merging with the non-offset coords
+
+It's important to ensure that the un-offset edge coords are not discarded here though, so
+we need to 'hold them back'.
 
 ---
 
