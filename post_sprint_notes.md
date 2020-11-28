@@ -293,7 +293,7 @@ Bug fixes give same result: False
 When I visualise the results, it's clear that the new points were not introduced in the clockwise order they
 began at, and that I need to be more careful to insert them back from whence they came!
 
-This is easily visualised using a gradient line:
+This is easily visualised using a gradient line ([`gradient_line.py`](gradient_line.py))
 
 Here is the result from the "offset first, undo invalid modifications later" approach:
 
@@ -307,7 +307,37 @@ valid offsets to individual edges, then concatenate to the non-edge offset coord
 It's clearly no good and it's easy to see why the `ConvexHull` result gives an entirely different
 mask...
 
----
+## Retaining the order of points by avoiding reshape
 
-After all of this, the code is slightly less elegant but it will not involve having to
-"undo" the modifications made, so I'd hope that this will save computation.
+Let's consider more closely at what precise step the order of points is lost (and therefore where
+to intervene to retain it in the output `coords`).
+
+The "simple" approach in `bugfix_draft` is:
+
+```py
+coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
+```
+
+In this expression, the `[:, np.newaxis, :]` means "keep the rows the same but in each row, make
+every entry a new array, whose only element is the entry that was there", or in other words, turn
+every row of entries into a row of singleton arrays, each of which contain the pre-existing entry.
+
+Now we can step in before this point, and just perform this singleton transformation:
+
+```py
+singleton_coords = coords[:, np.newaxis, :]
+```
+
+We'll just have to remember we've done this and `reshape(-1)` later!
+
+- (For clarity here, I've assigned it to a different array, `singleton_coords`)
+
+To perform the exact right offsets, we just need to determine the offsets to be performed at each
+entry in `singleton_coords`, either:
+
+- Constructing a list of as many `offsets` subarrays as are in `singleton_coords`
+- Selectively applying all subarrays of the `offsets` array to the appropriate entries of
+  `singleton_coords`
+
+The former seems awkward but doable, the latter seems more 'vectorised' potentially but also
+awkward...
