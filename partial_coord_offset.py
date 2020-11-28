@@ -55,7 +55,7 @@ def apply_partial_offsets(img_shape, coords, offsets):
     coords_b = (coords_b[:, np.newaxis, :] + offsets_b).reshape(-1, img.ndim)
     coords_l = (coords_l[:, np.newaxis, :] + offsets_l).reshape(-1, img.ndim)
     coords_r = (coords_r[:, np.newaxis, :] + offsets_r).reshape(-1, img.ndim)
-    edge_coords = np.unique(np.vstack([coords_t, coords_b, coords_l, coords_r]), axis=0)
+    edge_coords = np.unique(np.vstack([coords_t, coords_r, coords_b, coords_l]), axis=0)
     # form new coords array by concatenating the inner and the edge offsets
     coords = np.vstack([inner_coords, edge_coords])
     return coords
@@ -86,11 +86,11 @@ for bugfunc in bug_list:
     except IndexError as e:
         print(f"{bugfunc.__name__} raised the IndexError {e}", file=stderr)
 # Populate the namespace with the resulting variables of `bugfix_draft`
-#rets = bugfix_draft(img, coords, rets=True)
-#offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
+rets = bugfix_draft(img, coords, rets=True)
+offsets_good, coords_good, hull_good, vertices_good, hull_perim_r_good, hull_perim_c_good, mask_good = rets
 #
-#rets = bugfix_draft(img, coords, rets=True)
-#offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
+rets = bugfix_new(img, coords, rets=True)
+offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
 
 is_same_result = np.array_equal(*final_masks)
 print(f"Bug fixes give same result: {is_same_result}")

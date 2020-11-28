@@ -290,18 +290,24 @@ bugfix_new raised no error.
 Bug fixes give same result: False
 ```
 
-TBC...
+When I visualise the results, it's clear that the new points were not introduced in the clockwise order they
+began at, and that I need to be more careful to insert them back from whence they came!
+
+This is easily visualised using a gradient line:
+
+Here is the result from the "offset first, undo invalid modifications later" approach:
+
+![](hull_coords_good.png)
+
+Here is the result from the "select the non-edge offsets, then apply modifications there, then apply
+valid offsets to individual edges, then concatenate to the non-edge offset coordinates" approach:
+
+![](hull_coords_bad.png)
+
+It's clearly no good and it's easy to see why the `ConvexHull` result gives an entirely different
+mask...
 
 ---
 
 After all of this, the code is slightly less elegant but it will not involve having to
 "undo" the modifications made, so I'd hope that this will save computation.
-
-The only downside is a potential loss of vectorisation:
-perhaps if I rewrote this without the need to 'unpack' from offsets...
-
-```py
-z = zip((coords[not_l], coords[not_r], coords[not_t], coords[not_b]), offsets)
-for c, o in z:
-    c = c.astype(float) + o
-```
