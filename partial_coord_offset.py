@@ -41,6 +41,7 @@ def apply_partial_offsets(img_shape, coords, offsets):
     edge_t, edge_b = [coords[:,0] == lim for lim in (row_min, row_max)]
     edge_l, edge_r = [coords[:,1] == lim for lim in (col_min, col_max)]
     edge_includers = edge_t, edge_b, edge_l, edge_r
+    offset_mask = np.invert(edge_includers).T
     coords_t, coords_b, coords_l, coords_r = [coords[e] for e in edge_includers]
     # union (OR) of all the edge includers, i.e. the bool mask for edge coords
     any_edge = reduce(np.logical_or, edge_includers)
