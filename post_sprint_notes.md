@@ -249,6 +249,10 @@ ani.save("edge_omit_fail_animation.gif", writer="imagemagick", fps=10)
 plt.show()
 ```
 
+- (Actually, there was a small extra step to avoid duplicate frames, see
+  [anim_simple_coord_offset.py](anim_simple_coord_offset.py)) for the full script used to make
+  the animation below:
+
 ![](edge_omit_fail_animation.gif)
 
 ...which shows that it's modifying all the wrong nodes!
