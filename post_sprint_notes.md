@@ -278,6 +278,20 @@ to.
 It's important to ensure that the un-offset edge coords are not discarded here though, so
 we need to 'hold them back'.
 
+I tried to do this but for now they do not give the same exact result, so I'll have to dig into why.
+
+```sh
+python partial_coord_offset.py
+```
+⇣
+```STDOUT
+bugfix_draft raised no error.
+bugfix_new raised no error.
+Bug fixes give same result: False
+```
+
+TBC...
+
 ---
 
 After all of this, the code is slightly less elegant but it will not involve having to

@@ -23,6 +23,7 @@ def bugfix_draft(img, coords, rets=False):
     if rets: # Return early (otherwise cannot return the intermediate values)
         return offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask
     mask[hull_perim_r, hull_perim_c] = True # raises IndexError
+    return mask
 
 def apply_partial_offsets(img_shape, coords, offsets):
     "Apply the offsets only to the non-edge pixels"
@@ -54,7 +55,7 @@ def apply_partial_offsets(img_shape, coords, offsets):
     coords_b = (coords_b[:, np.newaxis, :] + offsets_b).reshape(-1, img.ndim)
     coords_l = (coords_l[:, np.newaxis, :] + offsets_l).reshape(-1, img.ndim)
     coords_r = (coords_r[:, np.newaxis, :] + offsets_r).reshape(-1, img.ndim)
-    edge_coords = np.unique(np.vstack[coords_t, coords_b, coords_l, coords_r]), axis=0)
+    edge_coords = np.unique(np.vstack([coords_t, coords_b, coords_l, coords_r]), axis=0)
     # form new coords array by concatenating the inner and the edge offsets
     coords = np.vstack([inner_coords, edge_coords])
     return coords
@@ -69,18 +70,27 @@ def bugfix_new(img, coords, rets=False):
     if rets: # Return early (otherwise cannot return the intermediate values)
         return offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask
     mask[hull_perim_r, hull_perim_c] = True # raises IndexError
+    return mask
 
 rp = regionprops(SAMPLE)[0]
 img = SAMPLE.astype(np.bool)
-bug_list = [bugfix_draft]
+bug_list = [bugfix_draft, bugfix_new]
+final_masks = []
 for bugfunc in bug_list:
     img, coords = common_subroutine_1(img=img)
     pre_coords = coords.copy() # store these as they change
     try:
-        bugfunc(img, coords)
+        mask = bugfunc(img, coords)
         print(f"{bugfunc.__name__} raised no error.", file=stderr)
+        final_masks.append(mask)
     except IndexError as e:
         print(f"{bugfunc.__name__} raised the IndexError {e}", file=stderr)
 # Populate the namespace with the resulting variables of `bugfix_draft`
-rets = bugfix_draft(img, coords, rets=True)
-offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
+#rets = bugfix_draft(img, coords, rets=True)
+#offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
+#
+#rets = bugfix_draft(img, coords, rets=True)
+#offsets, coords, hull, vertices, hull_perim_r, hull_perim_c, mask = rets
+
+is_same_result = np.array_equal(*final_masks)
+print(f"Bug fixes give same result: {is_same_result}")
