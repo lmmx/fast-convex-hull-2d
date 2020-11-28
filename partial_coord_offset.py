@@ -26,28 +26,37 @@ def bugfix_draft(img, coords, rets=False):
 
 def apply_partial_offsets(img_shape, coords, offsets):
     "Apply the offsets only to the non-edge pixels"
-    coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
+    # The following line is what we're replacing with the more complicated procedure below
+    #coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
     row_min, col_min = 0, 0
     row_max, col_max = np.subtract(img_shape, 1)
-    not_t = coords[:,0] != row_min
-    not_b = coords[:,0] != row_max
-    not_l = coords[:,1] != col_min
-    not_r = coords[:,1] != col_max
+    # bool masks for the subsets of `coords` excluding each edge (one edge at a time)
+    not_t, not_b = [coords[:,0] != lim for lim in (row_min, row_max)]
+    not_l, not_r = [coords[:,1] != lim for lim in (col_min, col_max)]
     edge_excluders = [not_t, not_b, not_l, not_r]
+    # intersection (AND) of all edge excluders, i.e. the bool mask for non-edge coords
     not_edge = reduce(np.logical_and, edge_excluders)
-    exc_coords = coords[edges]
-    exc_r, exc_c = exc_coords[:,0], exc_coords[:,1]
-    img_exc = edit_img[exc_r, exc_c]
-    mid_indx = np.argwhere(np.logical_and(0 < img_exc, img_exc < 255)).reshape(-1)
-    max_indx = np.argwhere(img_exc == 255).reshape(-1)
-    mid_r, mid_c = exc_r[mid_indx], exc_c[mid_indx]
-    max_r, max_c = exc_r[max_indx], exc_c[max_indx]
-    edit_img[mid_r, mid_c] += 140
-    edit_img[max_r, max_c] = 60
-    frames.append(edit_img.copy())
-    include = np.invert(not_edge)
-    include_coords =
-    coords[np.argwhere(include).reshape(-1)]
+    # bool masks for the subsets of `coords` including each edge (one edge at a time)
+    edge_t, edge_b = [coords[:,0] == lim for lim in (row_min, row_max)]
+    edge_l, edge_r = [coords[:,1] == lim for lim in (col_min, col_max)]
+    edge_includers = edge_t, edge_b, edge_l, edge_r
+    coords_t, coords_b, coords_l, coords_r = [coords[e] for e in edge_includers]
+    # union (OR) of all the edge includers, i.e. the bool mask for edge coords
+    any_edge = reduce(np.logical_or, edge_includers)
+    any_edge_i = np.invert(not_edge) # just a sanity check, this is unnecessary
+    assert np.array_equal(any_edge, any_edge_i), "Edge includer not inverse of excluder"
+    inner_coords = coords[not_edge]
+    # inner_coords can be safely treated with all offsets
+    inner_coords = (inner_coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
+    offsets_b, offsets_t, offsets_r, offsets_l = offsets
+    # edge coords must be treated one at a time (can this be vectorised i.e. in 1 line?)
+    coords_t = (coords_t[:, np.newaxis, :] + offsets_t).reshape(-1, img.ndim)
+    coords_b = (coords_b[:, np.newaxis, :] + offsets_b).reshape(-1, img.ndim)
+    coords_l = (coords_l[:, np.newaxis, :] + offsets_l).reshape(-1, img.ndim)
+    coords_r = (coords_r[:, np.newaxis, :] + offsets_r).reshape(-1, img.ndim)
+    edge_coords = np.unique(np.vstack[coords_t, coords_b, coords_l, coords_r]), axis=0)
+    # form new coords array by concatenating the inner and the edge offsets
+    coords = np.vstack([inner_coords, edge_coords])
     return coords
 
 def bugfix_new(img, coords, rets=False):
