@@ -245,8 +245,11 @@ def update(frame):
     return [im]
 
 ani = FuncAnimation(fig, update, frames=frames, init_func=init, blit=True)
+ani.save("edge_omit_fail_animation.gif", writer="imagemagick", fps=10)
 plt.show()
 ```
+
+![](edge_omit_fail_animation.gif)
 
 ...which shows that it's modifying all the wrong nodes!
 

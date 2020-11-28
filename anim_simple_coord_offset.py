@@ -101,4 +101,5 @@ def update(frame):
     return [im]
 
 ani = FuncAnimation(fig, update, frames=frames, init_func=init, blit=True, interval=100)
+ani.save("edge_omit_fail_animation.gif", writer="imagemagick", fps=10)
 plt.show()
