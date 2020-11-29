@@ -293,7 +293,7 @@ Bug fixes give same result: False
 When I visualise the results, it's clear that the new points were not introduced in the clockwise order they
 began at, and that I need to be more careful to insert them back from whence they came!
 
-This is easily visualised using a gradient line ([`gradient_line.py`](gradient_line.py))
+This is easily visualised using a gradient line ([`gradient_line_draft.py`](gradient_line_draft.py))
 
 Here is the result from the "offset first, undo invalid modifications later" approach:
 
@@ -306,6 +306,9 @@ valid offsets to individual edges, then concatenate to the non-edge offset coord
 
 It's clearly no good and it's easy to see why the `ConvexHull` result gives an entirely different
 mask...
+
+- Note: I noticed later that I mixed up the x and y axes, woops... Fixed later but cannot remake
+  these plots! See below
 
 ## Retaining the order of points by avoiding reshape
 
@@ -350,3 +353,12 @@ This function:
 
 - Places a "trivial" offset at the start of the `offsets` array (which came from `_offset_diamond`)
   i.e. `[0., 0.]`, which will not change the location of the 
+
+I recreated the earlier plot as `gradient_line_final.py` (after noticing I'd mixed the axes up),
+the axes here are also upside down (since image axes go from top to bottom), but it doesn't matter.
+
+![](hull_coords_final.png)
+
+This time there's no lines through the middle of the plot, i.e. the general route is along the
+perimeter, indicating that the points are roughly in the proper order (i.e. they have retained
+the order of the input `coords` and then applied `offsets` within the boundaries of the `img`).
