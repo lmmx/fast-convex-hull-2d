@@ -29,9 +29,8 @@ def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
 def bugfix(img, coords, rets=False):
     # Now include the intermediate processing steps where offsets are applied...
     offsets = _offsets_diamond(img.ndim)
-    #coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
+    # Apply bugfix to apply these offsets in a partial (valid/limited) way to the coords
     coords = apply_partial_offsets(img, coords, offsets)
-    # ...skip some more code as "the damage has been done" by the function above
     hull, vertices, hull_perim_r, hull_perim_c, mask = common_subroutine_2(img.shape,coords)
     if rets: # Return early (otherwise cannot return the intermediate values)
         return offsets, coords, hull, vertices, hull_perim_r, hull_perim_c
