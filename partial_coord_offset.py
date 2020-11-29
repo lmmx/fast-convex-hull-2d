@@ -5,9 +5,6 @@ from skimage.morphology.convex_hull import _offsets_diamond
 from sample_data import SAMPLE
 from common_subroutines import common_subroutine_1, common_subroutine_2
 
-global VAL_DICT
-VAL_DICT = {}
-
 def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
     """
     Apply the offsets only to the non-edge pixels, along with the trivial zero-offset
@@ -35,7 +32,7 @@ def bugfix(img, coords, rets=False):
     #coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)
     coords = apply_partial_offsets(img, coords, offsets)
     # ...skip some more code as "the damage has been done" by the function above
-    hull, vertices, hull_perim_r, hull_perim_c, mask = common_subroutine_2(img.shape,coords,rets)
+    hull, vertices, hull_perim_r, hull_perim_c, mask = common_subroutine_2(img.shape,coords)
     if rets: # Return early (otherwise cannot return the intermediate values)
         return offsets, coords, hull, vertices, hull_perim_r, hull_perim_c
     mask[hull_perim_r, hull_perim_c] = True # raises IndexError
@@ -45,11 +42,8 @@ rp = regionprops(SAMPLE)[0]
 img = SAMPLE.astype(np.bool)
 img, coords = common_subroutine_1(img=img)
 pre_coords = coords.copy() # store these as they change
-try:
-    mask = bugfix(img, coords)
-    print(f"bugfix raised no error.", file=stderr)
-except IndexError as e:
-    print(f"{bugfunc.__name__} raised the IndexError {e}", file=stderr)
+mask = bugfix(img, coords)
+print(f"bugfix raised no error.", file=stderr)
 
 # Populate the namespace with the resulting variables of `bugfix`
 rets = bugfix(img, coords, rets=True)
