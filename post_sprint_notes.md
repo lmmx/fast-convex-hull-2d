@@ -324,20 +324,29 @@ every row of entries into a row of singleton arrays, each of which contain the p
 
 Now we can step in before this point, and just perform this singleton transformation:
 
+This is instead replaced by the following function:
+
 ```py
-singleton_coords = coords[:, np.newaxis, :]
+def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
+    "Apply the offsets only to the non-edge pixels, along with the trivial zero-offset."
+    if retain_original_points:
+        # Insert the trivial offset of [0., 0.] into `offsets`
+        offsets = np.insert(offsets, 0, 0., axis=0)
+    row_max, col_max = np.subtract(img.shape, 1)
+    # bool masks for the subsets of `coords` including each edge (one edge at a time)
+    edge_t, edge_b = [coords[:,0] == lim for lim in (0, row_max)]
+    edge_l, edge_r = [coords[:,1] == lim for lim in (0, col_max)]
+    edge_includers = [edge_t, edge_b, edge_l, edge_r]
+    if retain_original_points:
+        dummy_edge = np.zeros_like(edge_t, dtype=bool) # all False so offset always applied
+        edge_includers.insert(0, dummy_edge)
+    offset_mask = np.invert(edge_includers).T
+    offset_idx = np.argwhere(offset_mask.ravel()).ravel()
+    coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)[offset_idx]
+    return coords
 ```
 
-We'll just have to remember we've done this and `reshape(-1)` later!
+This function:
 
-- (For clarity here, I've assigned it to a different array, `singleton_coords`)
-
-To perform the exact right offsets, we just need to determine the offsets to be performed at each
-entry in `singleton_coords`, either:
-
-- Constructing a list of as many `offsets` subarrays as are in `singleton_coords`
-- Selectively applying all subarrays of the `offsets` array to the appropriate entries of
-  `singleton_coords`
-
-The former seems awkward but doable, the latter seems more 'vectorised' potentially but also
-awkward...
+- Places a "trivial" offset at the start of the `offsets` array (which came from `_offset_diamond`)
+  i.e. `[0., 0.]`, which will not change the location of the 
