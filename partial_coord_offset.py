@@ -2,7 +2,9 @@ import numpy as np
 from skimage.measure import regionprops
 from skimage.morphology.convex_hull import _offsets_diamond
 from sample_data import SAMPLE
-from common_subroutines import common_subroutine_1, common_subroutine_2
+from skimage.morphology import _convex_hull
+from skimage.draw import polygon_perimeter
+from scipy.spatial import ConvexHull
 
 def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
     """
@@ -25,22 +27,14 @@ def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
     coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)[offset_idx]
     return coords
 
-def bugfix(img, coords, rets=False):
-    # Now include the intermediate processing steps where offsets are applied...
-    offsets = _offsets_diamond(img.ndim)
-    # Apply bugfix to apply these offsets in a partial (valid/limited) way to the coords
-    coords = apply_partial_offsets(img, coords, offsets)
-    hull, vertices, hull_perim_r, hull_perim_c, mask = common_subroutine_2(img.shape,coords)
-    if rets: # Return early (otherwise cannot return the intermediate values)
-        return offsets, coords, hull, vertices, hull_perim_r, hull_perim_c
-    mask[hull_perim_r, hull_perim_c] = True # raises IndexError
-    return mask
-
 rp = regionprops(SAMPLE)[0]
 img = SAMPLE.astype(np.bool)
-img, coords = common_subroutine_1(img=img)
-mask = bugfix(img, coords)
-
-# Populate the namespace with the resulting variables of `bugfix`
-rets = bugfix(img, coords, rets=True)
-offsets, coords, hull, vertices, hull_perim_r, hull_perim_c = rets
+coords = _convex_hull.possible_hull(np.ascontiguousarray(img, dtype=np.uint8))
+offsets = _offsets_diamond(img.ndim)
+# Apply bugfix to apply these offsets in a partial (valid/limited) way to the coords
+coords = apply_partial_offsets(img, coords, offsets)
+hull = ConvexHull(coords)
+vertices = hull.points[hull.vertices]
+hull_perim_r, hull_perim_c = polygon_perimeter(vertices[:, 0], vertices[:, 1])
+mask = np.zeros(img.shape, dtype=np.bool)
+mask[hull_perim_r, hull_perim_c] = True
