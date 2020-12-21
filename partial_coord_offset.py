@@ -1,4 +1,3 @@
-from sys import stderr
 import numpy as np
 from skimage.measure import regionprops
 from skimage.morphology.convex_hull import _offsets_diamond
@@ -40,9 +39,7 @@ def bugfix(img, coords, rets=False):
 rp = regionprops(SAMPLE)[0]
 img = SAMPLE.astype(np.bool)
 img, coords = common_subroutine_1(img=img)
-pre_coords = coords.copy() # store these as they change
 mask = bugfix(img, coords)
-print(f"bugfix raised no error.", file=stderr)
 
 # Populate the namespace with the resulting variables of `bugfix`
 rets = bugfix(img, coords, rets=True)
