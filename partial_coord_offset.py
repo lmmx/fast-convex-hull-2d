@@ -1,7 +1,6 @@
 import numpy as np
 from skimage.measure import regionprops
 from skimage.morphology.convex_hull import _offsets_diamond
-from sample_data import SAMPLE
 from skimage.morphology import _convex_hull
 from skimage.draw import polygon_perimeter
 from scipy.spatial import ConvexHull
@@ -26,6 +25,19 @@ def apply_partial_offsets(img, coords, offsets, retain_original_points=True):
     offset_idx = np.argwhere(offset_mask.ravel()).ravel()
     coords = (coords[:, np.newaxis, :] + offsets).reshape(-1, img.ndim)[offset_idx]
     return coords
+
+SAMPLE = np.array(
+    [[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+     [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+     [1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0],
+     [0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+     [0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]]
+)
 
 rp = regionprops(SAMPLE)[0]
 img = SAMPLE.astype(np.bool)
